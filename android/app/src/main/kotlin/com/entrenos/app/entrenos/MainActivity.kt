@@ -1,0 +1,5 @@
+package com.entrenos.app.entrenos
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()
