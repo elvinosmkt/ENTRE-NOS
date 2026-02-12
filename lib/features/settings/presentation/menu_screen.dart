@@ -39,176 +39,206 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.textGrey),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          'Configurações',
-          style: GoogleFonts.plusJakartaSans(
-            color: AppColors.textLight,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          // Profile Section
-          Center(
-            child: Column(
+      backgroundColor: const Color(0xFFF9FAFB),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            // Custom Header
+            Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primary, width: 2),
-                    boxShadow: [
-                      BoxShadow(color: AppColors.primary.withOpacity(0.1), blurRadius: 15),
-                    ],
-                  ),
-                  child: const CircleAvatar(
-                    radius: 40,
-                    backgroundColor: Colors.grey,
-                    backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=12'),
+                GestureDetector(
+                  onTap: () => context.pop(),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                    child: const Icon(Icons.arrow_back_ios_new, size: 20, color: Color(0xFF1E232C)),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(width: 16),
                 Text(
-                  _userName,
+                  'Ajustes',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textLight,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF1E232C),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'Conectado',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: AppColors.success,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
+              ],
+            ),
+            const SizedBox(height: 32),
+            
+            // Profile Section
+            Center(
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFFF4D8D), width: 2),
+                    ),
+                    child: const CircleAvatar(
+                      radius: 40,
+                      backgroundColor: Colors.grey,
+                      backgroundImage: NetworkImage('https://api.dicebear.com/7.x/avataaars/svg?seed=Avatar'),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 48),
-          
-          // Menu Items
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                _MenuItem(
-                  icon: Icons.edit_outlined,
-                  title: 'Editar Nome',
-                  onTap: () {
-                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Em breve...')));
-                  },
-                ),
-                const Divider(height: 1, indent: 16, endIndent: 16),
-                _MenuItem(
-                  icon: Icons.workspace_premium_rounded,
-                  title: 'Desbloquear Premium',
-                  onTap: () => context.push('/premium'),
-                ),
-                const Divider(height: 1, indent: 16, endIndent: 16),
-                _MenuItem(
-                  icon: Icons.card_giftcard_rounded,
-                  title: 'Presentear Amor',
-                  onTap: () => context.push('/gifting'),
-                ),
-                const Divider(height: 1, indent: 16, endIndent: 16),
-                _MenuItem(
-                  icon: Icons.help_outline,
-                  title: 'Como funciona o Widget?',
-                  onTap: () => context.push('/tutorial'),
-                ),
-                const Divider(height: 1, indent: 16, endIndent: 16),
-                _MenuItem(
-                  icon: Icons.shield_outlined,
-                  title: 'Termos e Privacidade',
-                  onTap: () {},
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 24),
-          
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: _MenuItem(
-              icon: Icons.logout,
-              title: 'Desconectar',
-              isDestructive: true,
-              showTrailing: false,
-              onTap: () {
-                showDialog(
-                  context: context, 
-                  builder: (context) => AlertDialog(
-                    backgroundColor: Colors.white,
-                    surfaceTintColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    title: Text('Desconectar?', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold)),
-                    content: Text('Você terá que entrar novamente para ver seus desenhos.', style: GoogleFonts.plusJakartaSans(color: AppColors.textGrey)),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text('Cancelar', style: GoogleFonts.plusJakartaSans(color: AppColors.textGrey)),
+                  const SizedBox(height: 16),
+                  Text(
+                    _userName,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF1E232C),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF4D8D).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'CONECTADO ❤️',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: const Color(0xFFFF4D8D),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                        letterSpacing: 0.5,
                       ),
-                      TextButton(
-                        onPressed: _disconnect,
-                        child: Text('Sair', style: GoogleFonts.plusJakartaSans(color: AppColors.error, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  )
-                );
-              },
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          
-          const SizedBox(height: 32),
-          
-          Center(
-            child: Text(
-              'Versão 1.0.0 (Beta)',
-              style: GoogleFonts.plusJakartaSans(color: AppColors.textGrey.withOpacity(0.5), fontSize: 12),
+            
+            const SizedBox(height: 40),
+            
+            // Menu Items
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 20,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _MenuItem(
+                    icon: Icons.edit_outlined,
+                    title: 'Editar Nome',
+                    onTap: () {
+                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Em breve...')));
+                    },
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  _MenuItem(
+                    icon: Icons.workspace_premium_rounded,
+                    title: 'Desbloquear Premium',
+                    onTap: () => context.push('/premium'),
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  _MenuItem(
+                    icon: Icons.card_giftcard_rounded,
+                    title: 'Presentear Amor',
+                    onTap: () => context.push('/gifting'),
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  _MenuItem(
+                    icon: Icons.help_outline,
+                    title: 'Como funciona o Widget?',
+                    onTap: () => context.push('/tutorial'),
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                   BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 20,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: _MenuItem(
+                icon: Icons.logout,
+                title: 'Desconectar',
+                isDestructive: true,
+                showTrailing: false,
+                onTap: () {
+                  showDialog(
+                    context: context, 
+                    builder: (context) => AlertDialog(
+                      backgroundColor: Colors.white,
+                      surfaceTintColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                      title: Text('Desconectar?', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800)),
+                      content: Text('Você terá que entrar novamente para ver seus desenhos.', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF8391A1))),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text('Cancelar', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF8391A1))),
+                        ),
+                        TextButton(
+                          onPressed: _disconnect,
+                          child: Text('Sair', style: GoogleFonts.plusJakartaSans(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    )
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Color(0xFFF3F4F6), width: 1)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildBottomNavItem(Icons.edit_rounded, 'Desenhar', onTap: () => context.go('/home')),
+            _buildBottomNavItem(Icons.history_rounded, 'Histórico', onTap: () => context.push('/history')),
+            _buildBottomNavItem(Icons.emoji_events_rounded, 'Premium', onTap: () => context.push('/premium')),
+            _buildBottomNavItem(Icons.settings_rounded, 'Ajustes', isActive: true),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNavItem(IconData icon, String label, {bool isActive = false, VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 24, color: isActive ? const Color(0xFFFF4D8D) : const Color(0xFFD1D5DB)),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 10,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+              color: isActive ? const Color(0xFFFF4D8D) : const Color(0xFFD1D5DB),
             ),
           ),
         ],
@@ -239,23 +269,21 @@ class _MenuItem extends StatelessWidget {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: isDestructive ? AppColors.error.withOpacity(0.1) : AppColors.primary.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(8),
+          color: isDestructive ? Colors.red.withOpacity(0.05) : const Color(0xFFFF4D8D).withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, color: isDestructive ? AppColors.error : AppColors.primary, size: 20),
+        child: Icon(icon, color: isDestructive ? Colors.redAccent : const Color(0xFFFF4D8D), size: 20),
       ),
       title: Text(
         title,
         style: GoogleFonts.plusJakartaSans(
-          color: isDestructive ? AppColors.error : AppColors.textLight,
-          fontWeight: FontWeight.w500,
+          color: isDestructive ? Colors.redAccent : const Color(0xFF1E232C),
+          fontWeight: FontWeight.w600,
           fontSize: 14,
         ),
       ),
-      trailing: showTrailing ? const Icon(Icons.arrow_forward_ios, color: AppColors.textGrey, size: 14) : null,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      trailing: showTrailing ? const Icon(Icons.arrow_forward_ios, color: Color(0xFFD1D5DB), size: 14) : null,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
     );
   }
 }
-
-

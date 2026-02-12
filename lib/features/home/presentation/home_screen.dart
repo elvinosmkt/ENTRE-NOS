@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'drawing_canvas.dart';
 import 'drawing_controller.dart';
-import 'color_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -22,6 +21,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final GlobalKey<DrawingCanvasState> _canvasKey = GlobalKey();
   final WidgetService _widgetService = WidgetService();
+  int _activeTab = 0; // 0: Pincel, 1: Foto, 2: Stickers, 3: Texto
 
   Future<void> _pickImage(DrawingController controller) async {
     final picker = ImagePicker();
@@ -30,6 +30,151 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (pickedFile != null) {
       if (mounted) {
         controller.setBackgroundImage(File(pickedFile.path));
+        setState(() => _activeTab = 1);
+      }
+    }
+  }
+
+  void _showStickersSheet() {
+    setState(() => _activeTab = 2);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Escolha um Sticker', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 18)),
+              const SizedBox(height: 24),
+              GridView.builder(
+                shrinkWrap: true,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, crossAxisSpacing: 16, mainAxisSpacing: 16),
+                itemCount: 8,
+                itemBuilder: (context, index) {
+                  final stickers = ['❤️', '✨', '🌸', '🧸', '🐱', '🦋', '🍭', '🌈'];
+                  return GestureDetector(
+                    onTap: () {
+                      // No futuro: Adicionar sticker no canvas
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sticker selecionado! (Em breve no canvas)')));
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(16)),
+                      child: Center(child: Text(stickers[index], style: const TextStyle(fontSize: 32))),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showTextInput() {
+    setState(() => _activeTab = 3);
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Adicionar Texto', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Escreva algo lindo...'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Texto adicionado! (Em breve no canvas)')));
+            },
+            child: const Text('Ok'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _sendToPartner() async {
+    final bytes = await _canvasKey.currentState?.capturePng();
+    if (bytes != null) {
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.95),
+                borderRadius: BorderRadius.circular(40),
+                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 40)],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                   const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 80),
+                   const SizedBox(height: 24),
+                   Text(
+                     'Carinho Enviado!',
+                     style: GoogleFonts.plusJakartaSans(
+                       fontSize: 24,
+                       fontWeight: FontWeight.w800,
+                       color: AppColors.textLight,
+                     ),
+                   ),
+                   const SizedBox(height: 12),
+                   Text(
+                     'Seu amor já recebeu o desenho no widget!',
+                     textAlign: TextAlign.center,
+                     style: GoogleFonts.plusJakartaSans(
+                       color: AppColors.textGrey,
+                       fontSize: 15,
+                       height: 1.5,
+                     ),
+                   ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        // Save locally for history
+        try {
+          final directory = await getApplicationDocumentsDirectory();
+          final fileName = 'drawing_${DateTime.now().millisecondsSinceEpoch}.png';
+          final file = File('${directory.path}/$fileName');
+          await file.writeAsBytes(bytes);
+
+          final prefs = await SharedPreferences.getInstance();
+          final history = prefs.getStringList('history') ?? [];
+          history.add(file.path);
+          await prefs.setStringList('history', history);
+        } catch (e) {
+          debugPrint('Error saving drawing: $e');
+        }
+
+        // Send to Widget
+        final prefs = await SharedPreferences.getInstance();
+        final userName = prefs.getString('user_name') ?? 'Alguém';
+        await _widgetService.sendData(
+          imageBytes: bytes,
+          text: 'Novo desenho de $userName! ❤️',
+          author: userName,
+        );
+
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) Navigator.pop(context);
+        });
       }
     }
   }
@@ -38,134 +183,104 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final drawingState = ref.watch(drawingControllerProvider);
     final controller = ref.read(drawingControllerProvider.notifier);
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: const Color(0xFFF9FAFB),
       body: Stack(
         children: [
-           // Blobs
-           Positioned(
-             top: -50, left: -50,
-             child: Container(
-               width: 200, height: 200,
-               decoration: BoxDecoration(
-                 color: AppColors.primary.withOpacity(0.05),
-                 borderRadius: BorderRadius.circular(100),
-                 boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.05), blurRadius: 40, spreadRadius: 10)]
-               ),
-             )
-           ),
-           Positioned(
-             bottom: 100, right: -50,
-             child: Container(
-               width: 150, height: 150,
-               decoration: BoxDecoration(
-                 color: AppColors.secondary.withOpacity(0.05),
-                 borderRadius: BorderRadius.circular(100),
-                 boxShadow: [BoxShadow(color: AppColors.secondary.withOpacity(0.05), blurRadius: 40, spreadRadius: 10)]
-               ),
-             )
-           ),
-
           SafeArea(
             child: Column(
               children: [
-                // 1. Header
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Menu
-                      IconButton(
-                        icon: const Icon(Icons.grid_view_rounded, color: AppColors.textGrey),
-                        onPressed: () => context.push('/menu'),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          padding: const EdgeInsets.all(12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          elevation: 2,
-                          shadowColor: Colors.black.withOpacity(0.05),
-                        ),
-                      ),
-                      
-                      // Title
-                      Column(
-                        children: [
-                          Text(
-                            'EntreNós',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textLight,
+                const SizedBox(height: 12),
+                // 1. Profile Status
+                Column(
+                  children: [
+                    Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 2),
+                            image: const DecorationImage(
+                              image: NetworkImage('https://api.dicebear.com/7.x/avataaars/svg?seed=Lucas'),
+                              fit: BoxFit.cover,
                             ),
                           ),
-                          Row(
-                            children: [
-                              Container(
-                                width: 6, height: 6,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.success,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Online',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
-                                  color: AppColors.textGrey,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              )
-                            ],
-                          )
-                        ],
-                      ),
-
-                      // History
-                      IconButton(
-                        icon: const Icon(Icons.history_rounded, color: AppColors.textGrey),
-                        onPressed: () => context.push('/history'),
-                         style: IconButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          padding: const EdgeInsets.all(12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          elevation: 2,
-                          shadowColor: Colors.black.withOpacity(0.05),
                         ),
-                      ),
-
-                      // Premium
-                      IconButton(
-                        icon: const Icon(Icons.workspace_premium_rounded, color: AppColors.primary),
-                        onPressed: () => context.push('/premium'),
-                         style: IconButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          padding: const EdgeInsets.all(12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          elevation: 2,
-                          shadowColor: Colors.black.withOpacity(0.05),
+                        Container(
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                             color: AppColors.success,
+                             shape: BoxShape.circle,
+                             border: Border.all(color: Colors.white, width: 2),
+                          ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Lucas',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF1E232C),
                       ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 6, height: 6,
+                          decoration: const BoxDecoration(color: Color(0xFFFF4D8D), shape: BoxShape.circle),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'CONECTADO ❤️',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: const Color(0xFFFF4D8D),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // 2. Tab Selector
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildTabItem(0, Icons.edit_rounded, 'Pincel', onTap: () => setState(() => _activeTab = 0)),
+                      _buildTabItem(1, Icons.image_rounded, 'Foto', isAction: true, onAction: () => _pickImage(controller)),
+                      _buildTabItem(2, Icons.emoji_emotions_rounded, 'Stickers', isAction: true, onAction: _showStickersSheet),
+                      _buildTabItem(3, Icons.text_fields_rounded, 'Texto', isAction: true, onAction: _showTextInput),
                     ],
                   ),
                 ),
 
-                // 2. Canvas Area
+                // 3. Canvas Card
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                    padding: const EdgeInsets.all(24.0),
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(32),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primary.withOpacity(0.08),
-                            blurRadius: 24,
-                            offset: const Offset(0, 12),
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 40,
+                            offset: const Offset(0, 10),
                           ),
                         ],
                       ),
@@ -173,61 +288,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         borderRadius: BorderRadius.circular(32),
                         child: Stack(
                           children: [
-                            // Canvas
                             DrawingCanvas(key: _canvasKey),
-                            
-                            // Floating Actions (Undo/Clear)
+                            // Undo/Reset
                             Positioned(
-                              top: 20,
-                              right: 20,
-                              child: Row(
-                                children: [
-                                  _buildCanvasAction(
-                                    icon: Icons.undo_rounded,
-                                    onTap: () => controller.undo(),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  _buildCanvasAction(
-                                    icon: Icons.delete_outline_rounded,
-                                    color: Colors.redAccent,
-                                    onTap: () => controller.clearCanvas(),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            
-                             // Background Image Indicator
-                             if (drawingState.backgroundImage != null)
-                              Positioned(
-                                top: 20,
-                                left: 20,
+                              top: 16,
+                              right: 16,
+                              child: GestureDetector(
+                                onTap: () => controller.clearCanvas(),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.6),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.image, color: Colors.white, size: 14),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Imagem de fundo',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                       const SizedBox(width: 8),
-                                       GestureDetector(
-                                          onTap: () => controller.setBackgroundImage(null),
-                                          child: const Icon(Icons.close, color: Colors.white, size: 14)
-                                       )
-                                    ],
-                                  ),
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: const BoxDecoration(color: Color(0xFFF3F4F6), shape: BoxShape.circle),
+                                  child: const Icon(Icons.refresh_rounded, size: 20, color: Color(0xFF9CA3AF)),
                                 ),
                               ),
+                            ),
                           ],
                         ),
                       ),
@@ -235,179 +309,96 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
 
-                // 3. Tools
-                Container(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.05),
-                        blurRadius: 20,
-                        offset: const Offset(0, -5),
+                // 4. Color Palette & Brush Size
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  _buildColorCircle(const Color(0xFFFF4D8D), controller, drawingState),
+                                  _buildColorCircle(const Color(0xFFFF8585), controller, drawingState),
+                                  _buildColorCircle(const Color(0xFF60A5FA), controller, drawingState),
+                                  _buildColorCircle(Colors.black, controller, drawingState),
+                                  _buildColorCircle(Colors.white, controller, drawingState, hasBorder: true),
+                                  const SizedBox(width: 8),
+                                  _buildSmallTool(Icons.wash_rounded, const Color(0xFF4B5563)),
+                                  _buildSmallTool(Icons.brush_rounded, const Color(0xFFF3F4F6), iconColor: Colors.grey),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          SizedBox(
+                            width: 80,
+                            child: SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                activeTrackColor: const Color(0xFFFF4D8D),
+                                inactiveTrackColor: const Color(0xFFE5E7EB),
+                                thumbColor: const Color(0xFFFF4D8D),
+                                trackHeight: 3,
+                                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+                              ),
+                              child: Slider(
+                                value: drawingState.selectedStrokeWidth,
+                                min: 2,
+                                max: 25,
+                                onChanged: (val) => controller.setStrokeWidth(val),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 24),
+
+                      // 5. Submit Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 64,
+                        child: ElevatedButton.icon(
+                          onPressed: _sendToPartner,
+                          icon: const Icon(Icons.send_rounded, size: 20),
+                          label: Text(
+                            'Enviar para a tela dele',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF4D8D),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                            elevation: 0,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                ),
+                
+                const SizedBox(height: 12),
+
+                // 6. Bottom Navigation Bar
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    border: Border(top: BorderSide(color: Color(0xFFF3F4F6), width: 1)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                       // Color Picker
-                       SizedBox(
-                         height: 50,
-                         child: ListView(
-                           scrollDirection: Axis.horizontal,
-                           children: [
-                             _buildColorOption(Colors.black, controller, drawingState),
-                             _buildColorOption(AppColors.primary, controller, drawingState),
-                             _buildColorOption(const Color(0xFFFFB3C6), controller, drawingState), // pink-light
-                             _buildColorOption(const Color(0xFF6B4EFF), controller, drawingState), // purple
-                             _buildColorOption(const Color(0xFF00C9A7), controller, drawingState), // teal
-                             _buildColorOption(const Color(0xFFFFD166), controller, drawingState), // yellow
-                             _buildColorOption(const Color(0xFFEF476F), controller, drawingState), // red
-                           ],
-                         ),
-                       ),
-                       
-                       const SizedBox(height: 24),
-                       
-                       // Bottom Actions
-                       Row(
-                         children: [
-                           // Image Picker
-                           _buildToolButton(
-                             icon: Icons.image_outlined,
-                             onTap: () => _pickImage(controller),
-                           ),
-                           const SizedBox(width: 16),
-                           
-                           // Stroke Size (Mock)
-                           Expanded(
-                             child: Container(
-                               height: 56,
-                               decoration: BoxDecoration(
-                                 color: AppColors.backgroundLight,
-                                 borderRadius: BorderRadius.circular(16),
-                               ),
-                               padding: const EdgeInsets.symmetric(horizontal: 16),
-                               child: Row(
-                                 children: [
-                                   const Icon(Icons.brush, color: AppColors.textGrey, size: 20),
-                                   Expanded(
-                                     child: SliderTheme(
-                                       data: SliderTheme.of(context).copyWith(
-                                         activeTrackColor: AppColors.textLight,
-                                         inactiveTrackColor: Colors.grey[300],
-                                         thumbColor: AppColors.textLight,
-                                         overlayColor: AppColors.textLight.withOpacity(0.1),
-                                         trackHeight: 2,
-                                         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                                       ),
-                                       child: Slider(
-                                         value: drawingState.selectedStrokeWidth,
-                                         min: 2,
-                                         max: 20,
-                                         onChanged: (val) => controller.setStrokeWidth(val),
-                                       ),
-                                     ),
-                                   ),
-                                    Container(
-                                      width: 24,
-                                      height: 24, 
-                                      alignment: Alignment.center,
-                                      decoration: const BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Container(
-                                        width: drawingState.selectedStrokeWidth.clamp(2.0, 20.0),
-                                        height: drawingState.selectedStrokeWidth.clamp(2.0, 20.0),
-                                        decoration: BoxDecoration(
-                                          color: drawingState.selectedColor,
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                    )
-                                 ],
-                               ),
-                             ),
-                           ),
-                           
-                           const SizedBox(width: 16),
-                           
-                           // Send Button
-                           GestureDetector(
-                             onTap: () async {
-                              final bytes = await _canvasKey.currentState?.capturePng();
-                              if (bytes != null) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Enviando carinho... ✨'),
-                                      backgroundColor: AppColors.primary,
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                  
-                                  // Save locally
-                                  try {
-                                    final directory = await getApplicationDocumentsDirectory();
-                                    final fileName = 'drawing_${DateTime.now().millisecondsSinceEpoch}.png';
-                                    final file = File('${directory.path}/$fileName');
-                                    await file.writeAsBytes(bytes);
-
-                                    final prefs = await SharedPreferences.getInstance();
-                                    final history = prefs.getStringList('history') ?? [];
-                                    history.add(file.path);
-                                    await prefs.setStringList('history', history);
-                                  } catch (e) {
-                                    debugPrint('Error saving drawing: $e');
-                                  }
-
-                                  // Send to Widget
-                                  final prefs = await SharedPreferences.getInstance();
-                                  final userName = prefs.getString('user_name') ?? 'Alguém';
-                                  await _widgetService.sendData(
-                                    imageBytes: bytes,
-                                    text: 'Novo desenho de $userName! ❤️',
-                                    author: userName,
-                                  );
-
-                                  await Future.delayed(const Duration(seconds: 1));
-                                  
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: const Text('Enviado com sucesso! 🚀'),
-                                        backgroundColor: AppColors.success,
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                      ),
-                                    );
-                                  }
-                                }
-                              }
-                            },
-                             child: Container(
-                               width: 56,
-                               height: 56,
-                               decoration: BoxDecoration(
-                                 color: AppColors.primary,
-                                 borderRadius: BorderRadius.circular(16),
-                                 boxShadow: [
-                                   BoxShadow(
-                                     color: AppColors.primary.withOpacity(0.4),
-                                     blurRadius: 15,
-                                     offset: const Offset(0, 8),
-                                   ),
-                                 ],
-                               ),
-                               child: const Icon(Icons.send_rounded, color: Colors.white),
-                             ),
-                           ),
-                         ],
-                       ),
-                       const SizedBox(height: 16), // Bottom safety margin
+                      _buildBottomNavItem(Icons.edit_rounded, 'Desenhar', isActive: true),
+                      _buildBottomNavItem(Icons.history_rounded, 'Histórico', onTap: () => context.push('/history')),
+                      _buildBottomNavItem(Icons.emoji_events_rounded, 'Premium', onTap: () => context.push('/premium')),
+                      _buildBottomNavItem(Icons.settings_rounded, 'Ajustes', onTap: () => context.push('/menu')),
                     ],
                   ),
                 ),
@@ -419,64 +410,87 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildCanvasAction({required IconData icon, Color? color, required VoidCallback onTap}) {
+  Widget _buildTabItem(int index, IconData icon, String label, {bool isAction = false, VoidCallback? onAction, VoidCallback? onTap}) {
+    final isSelected = _activeTab == index;
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Icon(icon, color: color ?? AppColors.textGrey, size: 20),
-      ),
-    );
-  }
-  
-  Widget _buildToolButton({required IconData icon, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          color: AppColors.backgroundLight,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Icon(icon, color: AppColors.textGrey),
+      onTap: isAction ? onAction : onTap,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: isSelected ? const Color(0xFFFF4D8D) : const Color(0xFF9CA3AF)),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected ? const Color(0xFFFF4D8D) : const Color(0xFF9CA3AF),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: 40,
+            height: 2,
+            color: isSelected ? const Color(0xFFFF4D8D) : Colors.transparent,
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildColorOption(Color color, DrawingController controller, dynamic state) {
+  Widget _buildColorCircle(Color color, DrawingController controller, dynamic state, {bool hasBorder = false}) {
     final isSelected = state.selectedColor == color;
     return GestureDetector(
       onTap: () => controller.setColor(color),
       child: Container(
-        margin: const EdgeInsets.only(right: 12),
-        width: 48,
-        height: 48,
+        margin: const EdgeInsets.only(right: 8),
+        width: 38,
+        height: 38,
         decoration: BoxDecoration(
           color: color,
           shape: BoxShape.circle,
-          border: isSelected ? Border.all(color: Colors.white, width: 3) : Border.all(color: Colors.grey.withOpacity(0.1), width: 1),
-          boxShadow: isSelected ? [
-            BoxShadow(
-              color: color.withOpacity(0.4),
-              blurRadius: 10,
-              spreadRadius: 2,
-            )
-          ] : [],
+          border: isSelected 
+            ? Border.all(color: Colors.white, width: 3) 
+            : (hasBorder ? Border.all(color: const Color(0xFFE5E7EB), width: 1) : null),
+          boxShadow: isSelected ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 10)] : [],
         ),
-        child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
+      ),
+    );
+  }
+
+  Widget _buildSmallTool(IconData icon, Color bgColor, {Color iconColor = Colors.white}) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        color: bgColor,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, color: iconColor, size: 18),
+    );
+  }
+
+  Widget _buildBottomNavItem(IconData icon, String label, {bool isActive = false, VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 24, color: isActive ? const Color(0xFFFF4D8D) : const Color(0xFFD1D5DB)),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 10,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+              color: isActive ? const Color(0xFFFF4D8D) : const Color(0xFFD1D5DB),
+            ),
+          ),
+        ],
       ),
     );
   }
