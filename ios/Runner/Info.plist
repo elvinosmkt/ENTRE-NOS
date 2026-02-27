@@ -42,14 +42,19 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>We need access to your photo library to let you draw on your photos.</string>
+	<string>Precisamos acessar suas fotos para você importar imagens ao desenho.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>We need access to your camera to let you take photos for drawing.</string>
+	<string>Precisamos acessar sua câmera para tirar fotos para o desenho.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>We need access to your microphone for video recording.</string>
+	<string>Precisamos acessar o microfone para gravação de vídeo.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

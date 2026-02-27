@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../../core/providers/user_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -16,79 +16,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _nameController = TextEditingController();
   bool _isLoading = false;
 
-  void _showNameDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Text(
-            'Como você se chama?', 
-            style: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.bold,
-              color: AppColors.textLight
-            )
-          ),
-          content: TextField(
-            controller: _nameController,
-            textCapitalization: TextCapitalization.words,
-            style: GoogleFonts.plusJakartaSans(color: AppColors.textLight),
-            decoration: InputDecoration(
-              hintText: 'Seu nome',
-              hintStyle: GoogleFonts.plusJakartaSans(color: AppColors.textGrey),
-              filled: true,
-              fillColor: AppColors.backgroundLight.withOpacity(0.5),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: AppColors.primary, width: 2),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Cancelar',
-                style: GoogleFonts.plusJakartaSans(color: AppColors.textGrey),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _saveNameAndContinue();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: Text(
-                'Continuar',
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<void> _saveNameAndContinue() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_name', name);
+    
+    // Save via provider
+    await ref.read(userProvider.notifier).setName(name);
 
     if (mounted) {
       context.go('/connect');
@@ -96,94 +31,134 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          Positioned(
-            top: -50,
-            right: -50,
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.05),
-                shape: BoxShape.circle,
+      backgroundColor: context.surfaceColor,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Spacer(flex: 2),
+              
+              // Icon
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.favorite_rounded, size: 48, color: AppColors.primary),
+                ),
               ),
-            ),
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32.0),
-              child: Column(
-                children: [
-                  const Spacer(),
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(32),
-                    ),
-                    child: const Icon(Icons.favorite_rounded, size: 48, color: AppColors.primary),
+
+              const SizedBox(height: 40),
+
+              // Title
+              Center(
+                child: Text(
+                  'Como você se chama?',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: context.textColor,
                   ),
-                  const SizedBox(height: 40),
-                  Text(
-                    'Bem-vindo ao EntreNós',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textLight,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Conecte-se com quem você ama através de desenhos divertidos.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      color: AppColors.textGrey,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 48),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 64,
-                    child: ElevatedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.apple),
-                      label: Text('Continuar com Apple', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 16)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 64,
-                    child: OutlinedButton.icon(
-                      onPressed: _showNameDialog,
-                      icon: const Icon(Icons.phone_iphone_rounded),
-                      label: Text('Continuar com Nome', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 16)),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: const BorderSide(color: AppColors.primary, width: 2),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                ],
+                ),
               ),
-            ),
+
+              const SizedBox(height: 8),
+
+              Center(
+                child: Text(
+                  'Seu amor verá esse nome nos carinhos.',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    color: context.textSecondary,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 40),
+
+              // Name Input
+              TextField(
+                controller: _nameController,
+                textAlign: TextAlign.center,
+                textCapitalization: TextCapitalization.words,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: context.textColor,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Seu nome...',
+                  hintStyle: GoogleFonts.plusJakartaSans(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w300,
+                    color: context.textSecondary.withOpacity(0.4),
+                  ),
+                  filled: true,
+                  fillColor: context.cardColor,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide(color: context.borderColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide(color: context.borderColor),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                ),
+                onSubmitted: (_) => _saveNameAndContinue(),
+              ),
+
+              const Spacer(flex: 1),
+
+              // Continue Button
+              SizedBox(
+                width: double.infinity,
+                height: 64,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _saveNameAndContinue,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                    elevation: 0,
+                    disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : Text(
+                          'Continuar',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+              ),
+
+              const SizedBox(height: 32),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

@@ -41,11 +41,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [AppColors.primary, Color(0xFFFDFCFD)],
+            colors: [AppColors.primary, context.isDark ? AppColors.backgroundDark : const Color(0xFFFDFCFD)],
           ),
         ),
         child: SafeArea(

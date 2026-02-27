@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -34,8 +33,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: context.surfaceColor,
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             // Custom Header
@@ -43,23 +43,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
               padding: const EdgeInsets.all(24.0),
               child: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => context.pop(),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                      child: const Icon(Icons.arrow_back_ios_new, size: 20, color: Color(0xFF1E232C)),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
                   Text(
                     'Histórico',
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 24,
+                      fontSize: 28,
                       fontWeight: FontWeight.w800,
-                      color: const Color(0xFF1E232C),
+                      color: context.textColor,
                     ),
                   ),
+                  const Spacer(),
+                  if (_history.isNotEmpty)
+                    Text(
+                      '${_history.length} carinhos',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        color: context.textSecondary,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -82,7 +82,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         final path = _history[index];
                         return Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: context.cardColor,
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
                               BoxShadow(
@@ -99,7 +99,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               children: [
                                 File(path).existsSync()
                                    ? Image.file(File(path), fit: BoxFit.cover)
-                                   : const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                                   : Center(child: Icon(Icons.broken_image, color: context.textSecondary)),
                                 Positioned(
                                   bottom: 0,
                                   left: 0,
@@ -126,22 +126,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFF3F4F6), width: 1)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildBottomNavItem(Icons.edit_rounded, 'Desenhar', onTap: () => context.go('/home')),
-            _buildBottomNavItem(Icons.history_rounded, 'Histórico', isActive: true),
-            _buildBottomNavItem(Icons.emoji_events_rounded, 'Premium', onTap: () => context.push('/premium')),
-            _buildBottomNavItem(Icons.settings_rounded, 'Ajustes', onTap: () => context.push('/menu')),
-          ],
-        ),
-      ),
     );
   }
 
@@ -152,14 +136,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-            child: Icon(Icons.history_rounded, size: 64, color: Color(0xFFE5E7EB)),
+            decoration: BoxDecoration(color: context.cardColor, shape: BoxShape.circle),
+            child: Icon(Icons.history_rounded, size: 64, color: context.dividerColor),
           ),
           const SizedBox(height: 24),
           Text(
             'Nenhum amor enviado', 
             style: GoogleFonts.plusJakartaSans(
-              color: const Color(0xFF1E232C),
+              color: context.textColor,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -171,30 +155,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
               'Os desenhos que você enviar aparecerão aqui.', 
               textAlign: TextAlign.center,
               style: GoogleFonts.plusJakartaSans(
-                color: const Color(0xFF8391A1),
+                color: context.textSecondary,
                 fontSize: 14,
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNavItem(IconData icon, String label, {bool isActive = false, VoidCallback? onTap}) {
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 24, color: isActive ? const Color(0xFFFF4D8D) : const Color(0xFFD1D5DB)),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 10,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-              color: isActive ? const Color(0xFFFF4D8D) : const Color(0xFFD1D5DB),
             ),
           ),
         ],

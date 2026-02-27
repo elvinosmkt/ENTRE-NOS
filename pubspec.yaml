@@ -1,5 +1,5 @@
 name: entrenos
-description: "A new Flutter project."
+description: "EntreNós — O app de casal que transforma desenhos em carinhos na tela de bloqueio."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -41,11 +41,15 @@ dependencies:
   uuid: ^4.5.2
   shared_preferences: ^2.5.4
   home_widget: ^0.9.0
+  supabase_flutter: ^2.8.1
   intl: ^0.20.2
   path_provider: ^2.1.5
   image_picker: ^1.2.1
   flutter_local_notifications: ^20.1.0
   permission_handler: ^12.0.1
+  firebase_core: ^3.12.1
+  firebase_messaging: ^15.2.4
+  purchases_flutter: ^9.12.3
 
 dev_dependencies:
   flutter_test:

@@ -10,8 +10,6 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-
-
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
@@ -21,26 +19,31 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       'title': 'Esse app é só para\nduas pessoas.',
       'description': 'Envie desenhos, fotos e notas diretamente para o widget da sua pessoa favorita.',
       'icon': Icons.favorite_border,
-      'image': 'assets/onboarding_1.png', // Placeholder logic
     },
     {
       'title': 'Escreva ou desenhe com\ncarinho.',
       'description': 'Surpreenda quem você ama enviando mensagens manuscritas direto para a tela de bloqueio.',
       'icon': Icons.draw_outlined,
-      'image': 'assets/onboarding_2.png',
     },
     {
       'title': 'Sua mensagem aparece\ndireto na tela dele(a).',
       'description': 'Transforme o bloqueio de tela do seu amor em um mural de carinhos instantâneos.',
       'icon': Icons.widgets_outlined,
-      'image': 'assets/onboarding_3.png',
     },
   ];
 
   @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
       body: Stack(
         children: [
           // Background Gradient Blobs
@@ -63,7 +66,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
           ),
-           Positioned(
+          Positioned(
             bottom: -50,
             right: -50,
             child: Container(
@@ -72,7 +75,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               decoration: BoxDecoration(
                 color: AppColors.secondary.withOpacity(0.1),
                 shape: BoxShape.circle,
-                 boxShadow: [
+                boxShadow: [
                   BoxShadow(
                     color: AppColors.secondary.withOpacity(0.1),
                     blurRadius: 80,
@@ -97,7 +100,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         child: Text(
                           'Pular',
                           style: GoogleFonts.plusJakartaSans(
-                            color: AppColors.textGrey,
+                            color: context.textSecondary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -126,9 +129,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 width: double.infinity,
                                 margin: const EdgeInsets.only(bottom: 32),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: context.cardColor,
                                   borderRadius: BorderRadius.circular(32),
-                                  border: Border.all(color: Colors.white, width: 4),
+                                  border: Border.all(color: context.cardColor, width: 4),
                                   boxShadow: [
                                     BoxShadow(
                                       color: Colors.black.withOpacity(0.05),
@@ -138,24 +141,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   ],
                                 ),
                                 child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                        // Abstract BG inside card
-                                        Positioned.fill(
-                                            child: Container(
-                                                decoration: BoxDecoration(
-                                                    borderRadius: BorderRadius.circular(28),
-                                                    color: AppColors.backgroundLight,
-                                                ),
-                                            ),
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Positioned.fill(
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(28),
+                                          color: isDark ? AppColors.surfaceDark : AppColors.backgroundLight,
                                         ),
-                                        Icon(
-                                            page['icon'] as IconData, 
-                                            size: 80, 
-                                            color: AppColors.primary.withOpacity(0.4)
-                                        ),
-                                        // If we had real images, they would go here
-                                    ],
+                                      ),
+                                    ),
+                                    Icon(
+                                      page['icon'] as IconData, 
+                                      size: 80, 
+                                      color: AppColors.primary.withOpacity(0.4),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -171,7 +172,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 28,
                                       fontWeight: FontWeight.bold,
-                                      color: AppColors.textLight,
+                                      color: context.textColor,
                                       height: 1.2,
                                     ),
                                   ),
@@ -181,7 +182,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                     textAlign: TextAlign.center,
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 16,
-                                      color: AppColors.textGrey,
+                                      color: context.textSecondary,
                                       height: 1.5,
                                     ),
                                   ),
@@ -220,7 +221,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ),
                       const SizedBox(height: 32),
                       
-                      // Button
+                      // Button — goes to LOGIN, not premium
                       SizedBox(
                         width: double.infinity,
                         height: 64,
@@ -232,6 +233,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 curve: Curves.easeInOut,
                               );
                             } else {
+                              // Go to login, let user try the app before paywall
                               context.go('/login');
                             }
                           },
@@ -247,7 +249,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                _currentPage == _pages.length - 1 ? 'Começar' : 'Continuar',
+                                _currentPage == _pages.length - 1 ? 'Quero Começar' : 'Continuar',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,

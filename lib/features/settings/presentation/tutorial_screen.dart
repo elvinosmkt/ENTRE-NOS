@@ -9,18 +9,18 @@ class TutorialScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: context.surfaceColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: AppColors.textGrey),
+          icon: Icon(Icons.close, color: context.textSecondary),
           onPressed: () => context.pop(),
         ),
         title: Text(
           'Adicionar Widget',
           style: GoogleFonts.plusJakartaSans(
-            color: AppColors.textLight,
+            color: context.textColor,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -35,7 +35,7 @@ class TutorialScreen extends StatelessWidget {
               height: 200,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.cardColor,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                    BoxShadow(
@@ -53,12 +53,12 @@ class TutorialScreen extends StatelessWidget {
             
             Expanded(
               child: ListView(
-                children: const [
-                  _StepTile(number: '1', text: 'Vá para a Tela Inicial do seu iPhone.'),
-                  _StepTile(number: '2', text: 'Toque e segure em qualquer espaço vazio até os apps tremerem.'),
-                  _StepTile(number: '3', text: 'Toque no botão "+" no canto superior esquerdo.'),
-                  _StepTile(number: '4', text: 'Pesquise por "EntreNós" e selecione o widget.'),
-                  _StepTile(number: '5', text: 'Toque em "Adicionar Widget". Pronto! ✨'),
+                children: [
+                  _StepTile(number: '1', text: 'Vá para a Tela Inicial do seu iPhone.', textColor: context.textColor),
+                  _StepTile(number: '2', text: 'Toque e segure em qualquer espaço vazio até os apps tremerem.', textColor: context.textColor),
+                  _StepTile(number: '3', text: 'Toque no botão "+" no canto superior esquerdo.', textColor: context.textColor),
+                  _StepTile(number: '4', text: 'Pesquise por "EntreNós" e selecione o widget.', textColor: context.textColor),
+                  _StepTile(number: '5', text: 'Toque em "Adicionar Widget". Pronto! ✨', textColor: context.textColor),
                 ],
               ),
             ),
@@ -93,8 +93,9 @@ class TutorialScreen extends StatelessWidget {
 class _StepTile extends StatelessWidget {
   final String number;
   final String text;
+  final Color textColor;
 
-  const _StepTile({required this.number, required this.text});
+  const _StepTile({required this.number, required this.text, required this.textColor});
 
   @override
   Widget build(BuildContext context) {
@@ -125,7 +126,7 @@ class _StepTile extends StatelessWidget {
             child: Text(
               text,
               style: GoogleFonts.plusJakartaSans(
-                color: AppColors.textLight,
+                color: textColor,
                 fontSize: 16,
                 height: 1.5,
               ),

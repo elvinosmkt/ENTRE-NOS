@@ -1,70 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/providers/user_provider.dart';
+import 'package:flutter/services.dart';
+import '../../subscription/data/subscription_provider.dart';
 
-class MenuScreen extends ConsumerStatefulWidget {
+class MenuScreen extends ConsumerWidget {
   const MenuScreen({super.key});
 
   @override
-  ConsumerState<MenuScreen> createState() => _MenuScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPremium = ref.watch(subscriptionProvider).value ?? false;
+    final userState = ref.watch(userProvider);
+    final userName = userState.value?.name ?? 'Usuário';
+    final myCode = userState.value?.myCode ?? '...';
 
-class _MenuScreenState extends ConsumerState<MenuScreen> {
-  String _userName = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
-
-  Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _userName = prefs.getString('user_name') ?? 'Usuário';
-    });
-  }
-
-  Future<void> _disconnect() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // Clear all data
-    if (mounted) {
-      context.go('/onboarding');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: context.surfaceColor,
       body: SafeArea(
+        bottom: false,
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            // Custom Header
-            Row(
-              children: [
-                GestureDetector(
-                  onTap: () => context.pop(),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                    child: const Icon(Icons.arrow_back_ios_new, size: 20, color: Color(0xFF1E232C)),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Text(
-                  'Ajustes',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF1E232C),
-                  ),
-                ),
-              ],
+            // Header
+            Text(
+              'Ajustes',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: context.textColor,
+              ),
             ),
             const SizedBox(height: 32),
             
@@ -76,34 +43,34 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFFF4D8D), width: 2),
+                      border: Border.all(color: isPremium ? AppColors.warning : AppColors.primary, width: 2),
                     ),
-                    child: const CircleAvatar(
+                    child: CircleAvatar(
                       radius: 40,
-                      backgroundColor: Colors.grey,
-                      backgroundImage: NetworkImage('https://api.dicebear.com/7.x/avataaars/svg?seed=Avatar'),
+                      backgroundColor: context.surfaceColor,
+                      backgroundImage: NetworkImage('https://api.dicebear.com/7.x/avataaars/svg?seed=$userName'),
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    _userName,
+                    userName,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1E232C),
+                      color: context.textColor,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF4D8D).withOpacity(0.1),
+                      color: isPremium ? AppColors.warning.withOpacity(0.1) : AppColors.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      'CONECTADO ❤️',
+                      isPremium ? 'PREMIUM ATIVO ✨' : 'CONECTADO ❤️',
                       style: GoogleFonts.plusJakartaSans(
-                        color: const Color(0xFFFF4D8D),
+                        color: isPremium ? const Color(0xFFB8860B) : AppColors.primary,
                         fontWeight: FontWeight.w700,
                         fontSize: 11,
                         letterSpacing: 0.5,
@@ -119,7 +86,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
             // Menu Items
             Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.cardColor,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
@@ -132,25 +99,38 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
               child: Column(
                 children: [
                   _MenuItem(
+                    icon: Icons.person_add_outlined,
+                    title: 'Meu Código: $myCode',
+                    onTap: () {
+                       Clipboard.setData(ClipboardData(text: myCode));
+                       ScaffoldMessenger.of(context).showSnackBar(
+                         SnackBar(content: Text('Código "$myCode" copiado! Compartilhe com seu amor. ❤️'))
+                       );
+                    },
+                  ),
+                  Divider(height: 1, indent: 16, endIndent: 16, color: context.dividerColor),
+                  _MenuItem(
                     icon: Icons.edit_outlined,
                     title: 'Editar Nome',
                     onTap: () {
                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Em breve...')));
                     },
                   ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  _MenuItem(
-                    icon: Icons.workspace_premium_rounded,
-                    title: 'Desbloquear Premium',
-                    onTap: () => context.push('/premium'),
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  if (!isPremium) ...[
+                    Divider(height: 1, indent: 16, endIndent: 16, color: context.dividerColor),
+                    _MenuItem(
+                      icon: Icons.workspace_premium_rounded,
+                      title: 'Desbloquear Premium',
+                      onTap: () => context.push('/premium'),
+                    ),
+                  ],
+                  Divider(height: 1, indent: 16, endIndent: 16, color: context.dividerColor),
                   _MenuItem(
                     icon: Icons.card_giftcard_rounded,
                     title: 'Presentear Amor',
                     onTap: () => context.push('/gifting'),
                   ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  Divider(height: 1, indent: 16, endIndent: 16, color: context.dividerColor),
                   _MenuItem(
                     icon: Icons.help_outline,
                     title: 'Como funciona o Widget?',
@@ -164,7 +144,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
             
             Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.cardColor,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                    BoxShadow(
@@ -182,20 +162,26 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                 onTap: () {
                   showDialog(
                     context: context, 
-                    builder: (context) => AlertDialog(
-                      backgroundColor: Colors.white,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor: context.cardColor,
                       surfaceTintColor: Colors.transparent,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                      title: Text('Desconectar?', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800)),
-                      content: Text('Você terá que entrar novamente para ver seus desenhos.', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF8391A1))),
+                      title: Text('Desconectar?', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: context.textColor)),
+                      content: Text('Você terá que entrar novamente para ver seus desenhos.', style: GoogleFonts.plusJakartaSans(color: context.textSecondary)),
                       actions: [
                         TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: Text('Cancelar', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF8391A1))),
+                          onPressed: () => Navigator.pop(ctx),
+                          child: Text('Cancelar', style: GoogleFonts.plusJakartaSans(color: context.textSecondary)),
                         ),
                         TextButton(
-                          onPressed: _disconnect,
-                          child: Text('Sair', style: GoogleFonts.plusJakartaSans(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            await ref.read(userProvider.notifier).disconnect();
+                            if (context.mounted) {
+                              context.go('/onboarding');
+                            }
+                          },
+                          child: Text('Sair', style: GoogleFonts.plusJakartaSans(color: AppColors.error, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     )
@@ -203,45 +189,10 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                 },
               ),
             ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFF3F4F6), width: 1)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildBottomNavItem(Icons.edit_rounded, 'Desenhar', onTap: () => context.go('/home')),
-            _buildBottomNavItem(Icons.history_rounded, 'Histórico', onTap: () => context.push('/history')),
-            _buildBottomNavItem(Icons.emoji_events_rounded, 'Premium', onTap: () => context.push('/premium')),
-            _buildBottomNavItem(Icons.settings_rounded, 'Ajustes', isActive: true),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _buildBottomNavItem(IconData icon, String label, {bool isActive = false, VoidCallback? onTap}) {
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 24, color: isActive ? const Color(0xFFFF4D8D) : const Color(0xFFD1D5DB)),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 10,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-              color: isActive ? const Color(0xFFFF4D8D) : const Color(0xFFD1D5DB),
-            ),
-          ),
-        ],
+            const SizedBox(height: 80), // padding for bottom nav
+          ],
+        ),
       ),
     );
   }
@@ -264,25 +215,31 @@ class _MenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final iconBgColor = isDestructive 
+        ? AppColors.error.withOpacity(0.05) 
+        : AppColors.primary.withOpacity(0.05);
+    final iconColor = isDestructive ? AppColors.error : AppColors.primary;
+    final titleColor = isDestructive ? AppColors.error : context.textColor;
+
     return ListTile(
       onTap: onTap,
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: isDestructive ? Colors.red.withOpacity(0.05) : const Color(0xFFFF4D8D).withOpacity(0.05),
+          color: iconBgColor,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, color: isDestructive ? Colors.redAccent : const Color(0xFFFF4D8D), size: 20),
+        child: Icon(icon, color: iconColor, size: 20),
       ),
       title: Text(
         title,
         style: GoogleFonts.plusJakartaSans(
-          color: isDestructive ? Colors.redAccent : const Color(0xFF1E232C),
+          color: titleColor,
           fontWeight: FontWeight.w600,
           fontSize: 14,
         ),
       ),
-      trailing: showTrailing ? const Icon(Icons.arrow_forward_ios, color: Color(0xFFD1D5DB), size: 14) : null,
+      trailing: showTrailing ? Icon(Icons.arrow_forward_ios, color: context.dividerColor, size: 14) : null,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
     );
   }

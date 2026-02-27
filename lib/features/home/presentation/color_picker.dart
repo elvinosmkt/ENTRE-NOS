@@ -5,10 +5,15 @@ class ColorPicker extends StatelessWidget {
   final Color selectedColor;
   final Function(Color) onColorSelected;
 
+  final bool isPremium;
+  final VoidCallback onPremiumLocked;
+
   const ColorPicker({
     super.key,
     required this.selectedColor,
     required this.onColorSelected,
+    required this.isPremium,
+    required this.onPremiumLocked,
   });
 
   final List<Color> colors = const [
@@ -32,8 +37,17 @@ class ColorPicker extends StatelessWidget {
         itemBuilder: (context, index) {
           final color = colors[index];
           final isSelected = color == selectedColor;
+          final isPremiumColor = index >= colors.length - 3;
+          final isLocked = isPremiumColor && !isPremium;
+          
           return GestureDetector(
-            onTap: () => onColorSelected(color),
+            onTap: () {
+              if (isLocked) {
+                onPremiumLocked();
+              } else {
+                onColorSelected(color);
+              }
+            },
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 8),
               width: 40,
@@ -55,9 +69,11 @@ class ColorPicker extends StatelessWidget {
                       ]
                     : [],
               ),
-              child: isSelected
-                  ? const Icon(Icons.check, size: 20, color: Colors.white) // Adjust contrast if needed
-                  : null,
+              child: isLocked 
+                  ? const Icon(Icons.stars_rounded, size: 16, color: Colors.white70)
+                  : isSelected
+                      ? const Icon(Icons.check, size: 20, color: Colors.white)
+                      : null,
             ),
           );
         },

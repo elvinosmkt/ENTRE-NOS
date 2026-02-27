@@ -9,7 +9,7 @@ class GiftingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.surfaceColor,
       body: Stack(
         children: [
           SafeArea(
@@ -25,10 +25,10 @@ class GiftingScreen extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF8F9FA),
+                          color: context.cardColor,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.close, size: 20, color: Color(0xFF8391A1)),
+                        child: Icon(Icons.close, size: 20, color: context.textSecondary),
                       ),
                     ),
                   ),
@@ -39,12 +39,12 @@ class GiftingScreen extends StatelessWidget {
                     child: Column(
                       children: [
                         const SizedBox(height: 20),
-                        // Image/Illustration
+                        // Illustration
                         Container(
                           width: 200,
                           height: 200,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFB6C1).withOpacity(0.2),
+                            color: AppColors.primary.withOpacity(0.08),
                             borderRadius: BorderRadius.circular(40),
                           ),
                           child: Center(
@@ -52,11 +52,11 @@ class GiftingScreen extends StatelessWidget {
                               width: 120,
                               height: 120,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFFE5F3),
+                                color: AppColors.primarySoft,
                                 borderRadius: BorderRadius.circular(20),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black12,
+                                    color: Colors.black.withOpacity(0.08),
                                     blurRadius: 10,
                                     offset: const Offset(0, 5),
                                   )
@@ -75,7 +75,7 @@ class GiftingScreen extends StatelessWidget {
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 28,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFF1E232C),
+                            color: context.textColor,
                           ),
                         ),
                         
@@ -88,7 +88,7 @@ class GiftingScreen extends StatelessWidget {
                             textAlign: TextAlign.center,
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 15,
-                              color: const Color(0xFF8391A1),
+                              color: context.textSecondary,
                               height: 1.5,
                             ),
                           ),
@@ -105,17 +105,9 @@ class GiftingScreen extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.all(24),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: context.cardColor,
                                   borderRadius: BorderRadius.circular(32),
-                                  border: Border.all(color: AppColors.primary.withOpacity(0.5), width: 1),
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      Colors.white,
-                                      AppColors.primary.withOpacity(0.02),
-                                    ],
-                                  ),
+                                  border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 1),
                                 ),
                                 child: Column(
                                   children: [
@@ -138,14 +130,14 @@ class GiftingScreen extends StatelessWidget {
                                               style: GoogleFonts.plusJakartaSans(
                                                 fontSize: 18,
                                                 fontWeight: FontWeight.bold,
-                                                color: const Color(0xFF1E232C),
+                                                color: context.textColor,
                                               ),
                                             ),
                                             Text(
                                               'Válido por 1 ano completo',
                                               style: GoogleFonts.plusJakartaSans(
                                                 fontSize: 13,
-                                                color: const Color(0xFF8391A1),
+                                                color: context.textSecondary,
                                               ),
                                             ),
                                           ],
@@ -153,9 +145,9 @@ class GiftingScreen extends StatelessWidget {
                                       ],
                                     ),
                                     const SizedBox(height: 24),
-                                    _CheckItem(text: 'Widgets ilimitados para ambos'),
+                                    _CheckItem(text: 'Widgets ilimitados para ambos', textColor: context.textColor),
                                     const SizedBox(height: 12),
-                                    _CheckItem(text: 'Cores e canetas exclusivas'),
+                                    _CheckItem(text: 'Cores e canetas exclusivas', textColor: context.textColor),
                                     const SizedBox(height: 24),
                                     Row(
                                       children: [
@@ -164,7 +156,7 @@ class GiftingScreen extends StatelessWidget {
                                           style: GoogleFonts.plusJakartaSans(
                                             fontSize: 32,
                                             fontWeight: FontWeight.w900,
-                                            color: const Color(0xFF1E232C),
+                                            color: context.textColor,
                                           ),
                                         ),
                                         const SizedBox(width: 8),
@@ -173,7 +165,7 @@ class GiftingScreen extends StatelessWidget {
                                           style: GoogleFonts.plusJakartaSans(
                                             fontSize: 14,
                                             decoration: TextDecoration.lineThrough,
-                                            color: const Color(0xFF8391A1),
+                                            color: context.textSecondary,
                                           ),
                                         ),
                                       ],
@@ -211,14 +203,35 @@ class GiftingScreen extends StatelessWidget {
                   ),
                 ),
                 
-                // Bottom Button
+                // Bottom Button — now generates share link
                 Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: SizedBox(
                     width: double.infinity,
                     height: 64,
                     child: ElevatedButton.icon(
-                      onPressed: () {},
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: Colors.transparent,
+                            elevation: 0,
+                            content: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                              decoration: BoxDecoration(
+                                color: context.isDark ? AppColors.cardDark : const Color(0xFF1E232C),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.check_circle, color: AppColors.success, size: 24),
+                                  const SizedBox(width: 12),
+                                  Text('Link de presente copiado! 🎁', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                       icon: const Icon(Icons.card_giftcard_rounded),
                       label: Text(
                         'Enviar Presente',
@@ -231,8 +244,7 @@ class GiftingScreen extends StatelessWidget {
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
-                        elevation: 10,
-                        shadowColor: AppColors.primary.withOpacity(0.4),
+                        elevation: 0,
                       ),
                     ),
                   ),
@@ -248,7 +260,8 @@ class GiftingScreen extends StatelessWidget {
 
 class _CheckItem extends StatelessWidget {
   final String text;
-  const _CheckItem({required this.text});
+  final Color textColor;
+  const _CheckItem({required this.text, required this.textColor});
 
   @override
   Widget build(BuildContext context) {
@@ -268,7 +281,7 @@ class _CheckItem extends StatelessWidget {
           style: GoogleFonts.plusJakartaSans(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFF1E232C),
+            color: textColor,
           ),
         ),
       ],

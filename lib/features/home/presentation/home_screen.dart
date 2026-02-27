@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'drawing_canvas.dart';
 import 'drawing_controller.dart';
+import 'color_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -10,6 +11,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../widget_config/widget_service.dart';
+import '../../subscription/data/subscription_provider.dart';
+import '../../../core/providers/user_provider.dart';
+import '../../../core/network/supabase_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -18,10 +22,37 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProviderStateMixin {
   final GlobalKey<DrawingCanvasState> _canvasKey = GlobalKey();
   final WidgetService _widgetService = WidgetService();
-  int _activeTab = 0; // 0: Pincel, 1: Foto, 2: Stickers, 3: Texto
+  final SupabaseService _supabaseService = SupabaseService();
+  late AnimationController _pulseController;
+  int _activeTab = 0; // 0: Pincel, 1: Foto
+  bool _isSending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+       vsync: this,
+       duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  bool _checkPremium() {
+    final isPremium = ref.read(subscriptionProvider).value ?? false;
+    if (!isPremium) {
+      context.push('/premium');
+      return false;
+    }
+    return true;
+  }
 
   Future<void> _pickImage(DrawingController controller) async {
     final picker = ImagePicker();
@@ -35,118 +66,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  void _showStickersSheet() {
-    setState(() => _activeTab = 2);
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Escolha um Sticker', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 18)),
-              const SizedBox(height: 24),
-              GridView.builder(
-                shrinkWrap: true,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, crossAxisSpacing: 16, mainAxisSpacing: 16),
-                itemCount: 8,
-                itemBuilder: (context, index) {
-                  final stickers = ['❤️', '✨', '🌸', '🧸', '🐱', '🦋', '🍭', '🌈'];
-                  return GestureDetector(
-                    onTap: () {
-                      // No futuro: Adicionar sticker no canvas
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sticker selecionado! (Em breve no canvas)')));
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(16)),
-                      child: Center(child: Text(stickers[index], style: const TextStyle(fontSize: 32))),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showTextInput() {
-    setState(() => _activeTab = 3);
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Adicionar Texto', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold)),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Escreva algo lindo...'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Texto adicionado! (Em breve no canvas)')));
-            },
-            child: const Text('Ok'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _sendToPartner() async {
+    if (_isSending) return;
+    setState(() => _isSending = true);
+
     final bytes = await _canvasKey.currentState?.capturePng();
     if (bytes != null) {
       if (context.mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => Dialog(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            child: Container(
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.95),
-                borderRadius: BorderRadius.circular(40),
-                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 40)],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                   const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 80),
-                   const SizedBox(height: 24),
-                   Text(
-                     'Carinho Enviado!',
-                     style: GoogleFonts.plusJakartaSans(
-                       fontSize: 24,
-                       fontWeight: FontWeight.w800,
-                       color: AppColors.textLight,
-                     ),
-                   ),
-                   const SizedBox(height: 12),
-                   Text(
-                     'Seu amor já recebeu o desenho no widget!',
-                     textAlign: TextAlign.center,
-                     style: GoogleFonts.plusJakartaSans(
-                       color: AppColors.textGrey,
-                       fontSize: 15,
-                       height: 1.5,
-                     ),
-                   ),
-                ],
-              ),
-            ),
-          ),
-        );
+        final userName = ref.read(userProvider).value?.name ?? 'Alguém';
 
         // Save locally for history
         try {
@@ -163,249 +90,315 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           debugPrint('Error saving drawing: $e');
         }
 
-        // Send to Widget
-        final prefs = await SharedPreferences.getInstance();
-        final userName = prefs.getString('user_name') ?? 'Alguém';
+        // 1. Send to Supabase (cloud — viaja pro parceiro)
+        final cloudSuccess = await _supabaseService.sendDrawingToPartner(bytes);
+        debugPrint('Cloud sync: ${cloudSuccess ? "SUCCESS" : "FAILED"}');
+
+        // 2. Send to local Widget (aparece na home screen deste celular)
         await _widgetService.sendData(
           imageBytes: bytes,
           text: 'Novo desenho de $userName! ❤️',
           author: userName,
         );
 
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) Navigator.pop(context);
-        });
+        // Feedback visual
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              duration: const Duration(seconds: 3),
+              content: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                decoration: BoxDecoration(
+                  color: context.isDark
+                      ? AppColors.cardDark.withOpacity(0.95)
+                      : const Color(0xFF1E232C).withOpacity(0.9),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.24), blurRadius: 10, offset: const Offset(0, 4))],
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      cloudSuccess ? Icons.check_circle_outline_rounded : Icons.cloud_off_rounded,
+                      color: cloudSuccess ? AppColors.success : AppColors.warning,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            cloudSuccess ? 'Carinho enviado!' : 'Salvo localmente',
+                            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                          Text(
+                            cloudSuccess
+                                ? 'Ele(a) verá em instantes no widget. ❤️'
+                                : 'Conecte-se a um parceiro para enviar online.',
+                            style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.white.withOpacity(0.8)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
       }
     }
+    if (mounted) setState(() => _isSending = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final drawingState = ref.watch(drawingControllerProvider);
     final controller = ref.read(drawingControllerProvider.notifier);
+    final isPremium = ref.watch(subscriptionProvider).value ?? false;
+    final userState = ref.watch(userProvider);
+    final userName = userState.value?.name ?? 'Você';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Column(
-              children: [
-                const SizedBox(height: 12),
-                // 1. Profile Status
-                Column(
-                  children: [
-                    Stack(
-                      alignment: Alignment.bottomRight,
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 2),
-                            image: const DecorationImage(
-                              image: NetworkImage('https://api.dicebear.com/7.x/avataaars/svg?seed=Lucas'),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          width: 18,
-                          height: 18,
-                          decoration: BoxDecoration(
-                             color: AppColors.success,
-                             shape: BoxShape.circle,
-                             border: Border.all(color: Colors.white, width: 2),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Lucas',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF1E232C),
-                      ),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 6, height: 6,
-                          decoration: const BoxDecoration(color: Color(0xFFFF4D8D), shape: BoxShape.circle),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'CONECTADO ❤️',
-                          style: GoogleFonts.plusJakartaSans(
-                            color: const Color(0xFFFF4D8D),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                // 2. Tab Selector
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+      backgroundColor: context.surfaceColor,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            // 1. Profile Status — Compact horizontal row
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  // Avatar compacto
+                  Stack(
+                    alignment: Alignment.bottomRight,
                     children: [
-                      _buildTabItem(0, Icons.edit_rounded, 'Pincel', onTap: () => setState(() => _activeTab = 0)),
-                      _buildTabItem(1, Icons.image_rounded, 'Foto', isAction: true, onAction: () => _pickImage(controller)),
-                      _buildTabItem(2, Icons.emoji_emotions_rounded, 'Stickers', isAction: true, onAction: _showStickersSheet),
-                      _buildTabItem(3, Icons.text_fields_rounded, 'Texto', isAction: true, onAction: _showTextInput),
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 2),
+                          image: DecorationImage(
+                            image: NetworkImage('https://api.dicebear.com/7.x/avataaars/svg?seed=$userName'),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                           color: AppColors.success,
+                           shape: BoxShape.circle,
+                           border: Border.all(color: context.cardColor, width: 2),
+                        ),
+                      ),
                     ],
                   ),
-                ),
-
-                // 3. Canvas Card
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(32),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
-                            blurRadius: 40,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(32),
-                        child: Stack(
+                  const SizedBox(width: 12),
+                  // Nome + status
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            DrawingCanvas(key: _canvasKey),
-                            // Undo/Reset
-                            Positioned(
-                              top: 16,
-                              right: 16,
-                              child: GestureDetector(
-                                onTap: () => controller.clearCanvas(),
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: const BoxDecoration(color: Color(0xFFF3F4F6), shape: BoxShape.circle),
-                                  child: const Icon(Icons.refresh_rounded, size: 20, color: Color(0xFF9CA3AF)),
+                            Text(
+                              userName,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: context.textColor,
+                              ),
+                            ),
+                            if (isPremium) ...[
+                              const SizedBox(width: 4),
+                              const Icon(Icons.stars_rounded, color: AppColors.warning, size: 16),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            ScaleTransition(
+                              scale: Tween(begin: 0.8, end: 1.2).animate(
+                                CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+                              ),
+                              child: Container(
+                                width: 6, height: 6,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.primary,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [BoxShadow(color: AppColors.primary, blurRadius: 4, spreadRadius: 1)]
                                 ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'CONECTADO ❤️',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: AppColors.primary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
                               ),
                             ),
                           ],
                         ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // 2. Tab Selector
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildTabItem(0, Icons.edit_rounded, 'Pincel', onTap: () => setState(() => _activeTab = 0)),
+                  _buildTabItem(1, Icons.image_rounded, 'Foto', isAction: true, onAction: () => _pickImage(controller)),
+                  _buildLockedTabItem(Icons.emoji_emotions_rounded, 'Stickers'),
+                  _buildLockedTabItem(Icons.text_fields_rounded, 'Texto'),
+                ],
+              ),
+            ),
+
+            // 3. Canvas Card
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: context.cardColor,
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(color: context.cardColor, width: 8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.06),
+                        blurRadius: 30,
+                        offset: const Offset(0, 12),
                       ),
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.03),
+                        blurRadius: 20,
+                        spreadRadius: -5,
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Stack(
+                      children: [
+                        Container(color: context.isDark ? const Color(0xFF1A1025) : const Color(0xFFFDFDFD)),
+                        DrawingCanvas(key: _canvasKey),
+                        Positioned(
+                          top: 16,
+                          right: 16,
+                          child: GestureDetector(
+                            onTap: () => controller.clearCanvas(),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: context.surfaceColor.withOpacity(0.8),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.refresh_rounded, size: 20, color: context.textSecondary),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
+              ),
+            ),
 
-                // 4. Color Palette & Brush Size
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Column(
+            // 4. Color Palette & Brush Size
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                children: [
+                  Row(
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                children: [
-                                  _buildColorCircle(const Color(0xFFFF4D8D), controller, drawingState),
-                                  _buildColorCircle(const Color(0xFFFF8585), controller, drawingState),
-                                  _buildColorCircle(const Color(0xFF60A5FA), controller, drawingState),
-                                  _buildColorCircle(Colors.black, controller, drawingState),
-                                  _buildColorCircle(Colors.white, controller, drawingState, hasBorder: true),
-                                  const SizedBox(width: 8),
-                                  _buildSmallTool(Icons.wash_rounded, const Color(0xFF4B5563)),
-                                  _buildSmallTool(Icons.brush_rounded, const Color(0xFFF3F4F6), iconColor: Colors.grey),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          SizedBox(
-                            width: 80,
-                            child: SliderTheme(
-                              data: SliderTheme.of(context).copyWith(
-                                activeTrackColor: const Color(0xFFFF4D8D),
-                                inactiveTrackColor: const Color(0xFFE5E7EB),
-                                thumbColor: const Color(0xFFFF4D8D),
-                                trackHeight: 3,
-                                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-                              ),
-                              child: Slider(
-                                value: drawingState.selectedStrokeWidth,
-                                min: 2,
-                                max: 25,
-                                onChanged: (val) => controller.setStrokeWidth(val),
-                              ),
-                            ),
-                          ),
-                        ],
+                      Expanded(
+                        child: ColorPicker(
+                          selectedColor: drawingState.selectedColor,
+                          isPremium: isPremium,
+                          onColorSelected: (color) => controller.setColor(color),
+                          onPremiumLocked: () => context.push('/premium'),
+                        ),
                       ),
-                      
-                      const SizedBox(height: 24),
-
-                      // 5. Submit Button
+                      const SizedBox(width: 8),
+                      _buildSmallTool(Icons.wash_rounded, context.isDark ? AppColors.cardDark : const Color(0xFF4B5563), onTap: () => controller.setColor(Colors.white)),
+                      _buildSmallTool(Icons.undo_rounded, context.surfaceColor, iconColor: context.textSecondary, onTap: () => controller.undo()),
+                      const SizedBox(width: 16),
                       SizedBox(
-                        width: double.infinity,
-                        height: 64,
-                        child: ElevatedButton.icon(
-                          onPressed: _sendToPartner,
-                          icon: const Icon(Icons.send_rounded, size: 20),
-                          label: Text(
-                            'Enviar para a tela dele',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+                        width: 80,
+                        child: SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            activeTrackColor: AppColors.primary,
+                            inactiveTrackColor: context.dividerColor,
+                            thumbColor: AppColors.primary,
+                            trackHeight: 3,
+                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
                           ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF4D8D),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
-                            elevation: 0,
+                          child: Slider(
+                            value: drawingState.selectedStrokeWidth,
+                            min: 2,
+                            max: 25,
+                            onChanged: (val) => controller.setStrokeWidth(val),
                           ),
                         ),
                       ),
                     ],
                   ),
-                ),
-                
-                const SizedBox(height: 12),
+                  
+                  const SizedBox(height: 16),
 
-                // 6. Bottom Navigation Bar
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    border: Border(top: BorderSide(color: Color(0xFFF3F4F6), width: 1)),
+                  // 5. Submit Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton.icon(
+                      onPressed: _isSending ? null : _sendToPartner,
+                      icon: _isSending
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Icon(Icons.send_rounded, size: 20),
+                      label: Text(
+                        _isSending ? 'Enviando...' : 'Enviar para a tela dele',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: AppColors.primary.withOpacity(0.6),
+                        disabledForegroundColor: Colors.white70,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                        elevation: 0,
+                      ),
+                    ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildBottomNavItem(Icons.edit_rounded, 'Desenhar', isActive: true),
-                      _buildBottomNavItem(Icons.history_rounded, 'Histórico', onTap: () => context.push('/history')),
-                      _buildBottomNavItem(Icons.emoji_events_rounded, 'Premium', onTap: () => context.push('/premium')),
-                      _buildBottomNavItem(Icons.settings_rounded, 'Ajustes', onTap: () => context.push('/menu')),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+            
+            const SizedBox(height: 12),
+          ],
+        ),
       ),
     );
   }
@@ -418,14 +411,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: isSelected ? const Color(0xFFFF4D8D) : const Color(0xFF9CA3AF)),
+              Icon(icon, size: 18, color: isSelected ? AppColors.primary : context.textSecondary),
               const SizedBox(width: 4),
               Text(
                 label,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? const Color(0xFFFF4D8D) : const Color(0xFF9CA3AF),
+                  color: isSelected ? AppColors.primary : context.textSecondary,
                 ),
               ),
             ],
@@ -434,63 +427,73 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           Container(
             width: 40,
             height: 2,
-            color: isSelected ? const Color(0xFFFF4D8D) : Colors.transparent,
+            color: isSelected ? AppColors.primary : Colors.transparent,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildColorCircle(Color color, DrawingController controller, dynamic state, {bool hasBorder = false}) {
-    final isSelected = state.selectedColor == color;
+  Widget _buildLockedTabItem(IconData icon, String label) {
     return GestureDetector(
-      onTap: () => controller.setColor(color),
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            duration: const Duration(seconds: 2),
+            content: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: context.isDark ? AppColors.cardDark : const Color(0xFF1E232C),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.lock_rounded, color: AppColors.warning, size: 18),
+                  const SizedBox(width: 8),
+                  Text('$label chega em breve! ✨', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: context.textSecondary.withOpacity(0.4)),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: context.textSecondary.withOpacity(0.4),
+                ),
+              ),
+              const SizedBox(width: 2),
+              Icon(Icons.lock_rounded, size: 10, color: context.textSecondary.withOpacity(0.4)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(width: 40, height: 2, color: Colors.transparent),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmallTool(IconData icon, Color bgColor, {Color iconColor = Colors.white, VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(right: 8),
         width: 38,
         height: 38,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: isSelected 
-            ? Border.all(color: Colors.white, width: 3) 
-            : (hasBorder ? Border.all(color: const Color(0xFFE5E7EB), width: 1) : null),
-          boxShadow: isSelected ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 10)] : [],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSmallTool(IconData icon, Color bgColor, {Color iconColor = Colors.white}) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        color: bgColor,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(icon, color: iconColor, size: 18),
-    );
-  }
-
-  Widget _buildBottomNavItem(IconData icon, String label, {bool isActive = false, VoidCallback? onTap}) {
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 24, color: isActive ? const Color(0xFFFF4D8D) : const Color(0xFFD1D5DB)),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 10,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-              color: isActive ? const Color(0xFFFF4D8D) : const Color(0xFFD1D5DB),
-            ),
-          ),
-        ],
+        decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+        child: Icon(icon, color: iconColor, size: 18),
       ),
     );
   }
