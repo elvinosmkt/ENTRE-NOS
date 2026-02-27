@@ -100,13 +100,9 @@ class MenuScreen extends ConsumerWidget {
                 children: [
                   _MenuItem(
                     icon: Icons.person_add_outlined,
-                    title: 'Meu Código: $myCode',
-                    onTap: () {
-                       Clipboard.setData(ClipboardData(text: myCode));
-                       ScaffoldMessenger.of(context).showSnackBar(
-                         SnackBar(content: Text('Código "$myCode" copiado! Compartilhe com seu amor. ❤️'))
-                       );
-                    },
+                    title: 'Convidar Parceiro(a)',
+                    subtitle: 'Código: $myCode',
+                    onTap: () => context.push('/connect'),
                   ),
                   Divider(height: 1, indent: 16, endIndent: 16, color: context.dividerColor),
                   _MenuItem(
@@ -201,6 +197,7 @@ class MenuScreen extends ConsumerWidget {
 class _MenuItem extends StatelessWidget {
   final IconData icon;
   final String title;
+  final String? subtitle;
   final VoidCallback onTap;
   final bool isDestructive;
   final bool showTrailing;
@@ -209,6 +206,7 @@ class _MenuItem extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.onTap,
+    this.subtitle,
     this.isDestructive = false,
     this.showTrailing = true,
   });
@@ -239,6 +237,16 @@ class _MenuItem extends StatelessWidget {
           fontSize: 14,
         ),
       ),
+      subtitle: subtitle != null
+          ? Text(
+              subtitle!,
+              style: GoogleFonts.plusJakartaSans(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            )
+          : null,
       trailing: showTrailing ? Icon(Icons.arrow_forward_ios, color: context.dividerColor, size: 14) : null,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
     );

@@ -1,0 +1,19 @@
+Launching lib/main.dart on iPhone 17 Pro in debug mode...
+Updating project for Xcode compatibility.
+Upgrading project.pbxproj
+Upgrading Runner.xcscheme
+Running pod install...                                           2.745ms
+Running Xcode build...                                          
+Xcode build done.                                           32,7s
+dartvm(79134) MallocStackLogging: can't turn off malloc stack logging because it was not enabled.
+Failed to build iOS app
+Error (Xcode): no such file or directory: '/Users/alexandrebenitescorrea/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation'
+
+Error (Xcode): stat cache file '/Users/alexandrebenitescorrea/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.2-23C57-3cef6be6548e86332fd6ca2a1d3113be.sdkstatcache' not found
+
+Could not build the application for the simulator.
+Error launching application on iPhone 17 Pro.
+dartvm(79143) MallocStackLogging: can't turn off malloc stack logging because it was not enabled.
+dartvm(79144) MallocStackLogging: can't turn off malloc stack logging because it was not enabled.
+dartvm(79145) MallocStackLogging: can't turn off malloc stack logging because it was not enabled.
+dartvm(79146) MallocStackLogging: can't turn off malloc stack logging because it was not enabled.
