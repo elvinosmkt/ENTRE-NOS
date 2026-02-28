@@ -64,6 +64,7 @@ class DrawingCanvasState extends ConsumerState<DrawingCanvas> {
             painter: CanvasPainter(
               strokes: drawingState.strokes,
               currentStroke: drawingState.currentStroke,
+              texts: drawingState.texts,
             ),
             size: Size.infinite,
           ),

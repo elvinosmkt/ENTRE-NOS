@@ -29,7 +29,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   final WidgetService _widgetService = WidgetService();
   final SupabaseService _supabaseService = SupabaseService();
   late AnimationController _pulseController;
-  int _activeTab = 0;
   bool _isSending = false;
 
   @override
@@ -50,13 +49,103 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   Future<void> _pickImage(DrawingController controller) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    
-    if (pickedFile != null) {
-      if (mounted) {
-        controller.setBackgroundImage(File(pickedFile.path));
-        setState(() => _activeTab = 1);
-      }
+    if (pickedFile != null && mounted) {
+      controller.setBackgroundImage(File(pickedFile.path));
     }
+  }
+
+  Future<void> _showTextDialog(DrawingController controller) async {
+    final textController = TextEditingController();
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom + 20, left: 20, right: 20, top: 20),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.9),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: Colors.white.withOpacity(0.5), width: 1.5),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Adicionar Texto 💬',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF1A1A2E),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Escreva uma mensagem para seu amor',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: textController,
+                      autofocus: true,
+                      maxLines: 3,
+                      style: GoogleFonts.plusJakartaSans(color: const Color(0xFF1A1A2E)),
+                      decoration: InputDecoration(
+                        hintText: 'Ex: Te amo muito! ❤️',
+                        hintStyle: GoogleFonts.plusJakartaSans(color: Colors.grey[400]),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (textController.text.isNotEmpty) {
+                            controller.addText(textController.text);
+                          }
+                          Navigator.of(ctx).pop();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          'Adicionar ao Desenho',
+                          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 15),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _sendToPartner() async {
@@ -146,37 +235,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     final userState = ref.watch(userProvider);
     final userName = userState.value?.name ?? 'Você';
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final canvasBackground = isDark ? const Color(0xFF120D1A) : Colors.white;
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFFDFCFD),
       body: Stack(
         children: [
-          // 1. Mesh Background
+          // Background glow disks
           Positioned(
-            top: -100,
-            right: -100,
-            child: _GlowDisk(color: AppColors.primary.withOpacity(0.12), size: 400),
+            top: -80,
+            right: -80,
+            child: _GlowDisk(color: AppColors.primary.withOpacity(0.10), size: 360),
           ),
           Positioned(
-            bottom: -50,
-            left: -50,
-            child: _GlowDisk(color: AppColors.secondary.withOpacity(0.08), size: 350),
+            bottom: -40,
+            left: -40,
+            child: _GlowDisk(color: AppColors.secondary.withOpacity(0.07), size: 300),
           ),
 
-          // 2. Main Content
+          // Main Content
           SafeArea(
             child: Column(
               children: [
-                // Floating Header
+                // ── Header ──────────────────────────────────────────────
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
                   child: _FloatingGlassContainer(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       child: Row(
                         children: [
                           _AnimatedAvatar(userName: userName),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,14 +277,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                     Text(
                                       userName,
                                       style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 16,
+                                        fontSize: 15,
                                         fontWeight: FontWeight.w800,
                                         color: context.textColor,
                                       ),
                                     ),
                                     if (isPremium) ...[
                                       const SizedBox(width: 4),
-                                      const Icon(Icons.verified_rounded, color: AppColors.primary, size: 16),
+                                      const Icon(Icons.verified_rounded, color: AppColors.primary, size: 14),
                                     ],
                                   ],
                                 ),
@@ -204,7 +294,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                           ),
                           IconButton(
                             onPressed: () => context.push('/settings'),
-                            icon: const Icon(Icons.settings_rounded, size: 22),
+                            icon: const Icon(Icons.settings_rounded, size: 20),
                             color: context.textSecondary,
                             visualDensity: VisualDensity.compact,
                           ),
@@ -214,44 +304,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                   ),
                 ),
 
-                // Canvas Area (Immersive)
+                // ── Canvas Area ──────────────────────────────────────────
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: Stack(
+                      fit: StackFit.expand,
                       children: [
-                        // Canvas Frame
+                        // Canvas container — SEM ClipRRect que quebra gestos
                         Container(
                           decoration: BoxDecoration(
-                            color: isDark ? Colors.black.withOpacity(0.2) : Colors.white,
-                            borderRadius: BorderRadius.circular(40),
+                            color: canvasBackground,
+                            borderRadius: BorderRadius.circular(32),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
-                                blurRadius: 40,
-                                offset: const Offset(0, 20),
+                                color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
+                                blurRadius: 30,
+                                offset: const Offset(0, 12),
                               ),
                             ],
+                            border: Border.all(
+                              color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.12),
+                              width: 1,
+                            ),
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(40),
-                            child: DrawingCanvas(key: _canvasKey),
-                          ),
+                          // Usamos o Canvas DENTRO do Container, sem ClipRRect,
+                          // para que os gestos de toque funcionem em toda a área.
+                          child: DrawingCanvas(key: _canvasKey),
                         ),
-                        
-                        // Floating Canvas Controls
+
+                        // Floating action buttons (clear / undo) no canto superior direito
                         Positioned(
-                          top: 20,
-                          right: 20,
+                          top: 14,
+                          right: 14,
                           child: Column(
                             children: [
                               _CanvasActionButton(
                                 icon: Icons.refresh_rounded,
+                                tooltip: 'Limpar',
                                 onTap: () => controller.clearCanvas(),
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 10),
                               _CanvasActionButton(
                                 icon: Icons.undo_rounded,
+                                tooltip: 'Desfazer',
                                 onTap: () => controller.undo(),
                               ),
                             ],
@@ -262,22 +358,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                   ),
                 ),
 
-                // Bottom Controls Area
+                // ── Bottom Controls ──────────────────────────────────────
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                   child: Column(
                     children: [
+                      // Tools panel
                       _FloatingGlassContainer(
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                           child: Column(
                             children: [
-                              // Color & Tools Row
+                              // Row: Colors + quick tool buttons
                               Row(
                                 children: [
+                                  // Color picker expandido
                                   Expanded(
-                                    child: SingleChildScrollView(
-                                      scrollDirection: Axis.horizontal,
+                                    child: SizedBox(
+                                      height: 56,
                                       child: ColorPicker(
                                         selectedColor: drawingState.selectedColor,
                                         isPremium: isPremium,
@@ -286,32 +384,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  // Separador
                                   Container(
                                     width: 1,
-                                    height: 30,
-                                    color: context.dividerColor.withOpacity(0.1),
+                                    height: 32,
+                                    color: Colors.grey.withOpacity(0.2),
+                                    margin: const EdgeInsets.symmetric(horizontal: 8),
                                   ),
-                                  const SizedBox(width: 12),
-                                  _ToolButton(
+                                  // Botão: Foto
+                                  _ToolIconButton(
                                     icon: Icons.image_rounded,
+                                    label: 'Foto',
+                                    color: const Color(0xFF6366F1),
                                     onTap: () => _pickImage(controller),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  // Botão: Texto
+                                  _ToolIconButton(
+                                    icon: Icons.text_fields_rounded,
+                                    label: 'Texto',
+                                    color: AppColors.primary,
+                                    onTap: () => _showTextDialog(controller),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 20),
-                              // Stroke Size Slider
+                              const SizedBox(height: 8),
+                              // Stroke slider
                               Row(
                                 children: [
-                                  Icon(Icons.brush_rounded, size: 18, color: context.textSecondary),
+                                  Icon(Icons.brush_rounded, size: 16, color: context.textSecondary),
+                                  const SizedBox(width: 4),
                                   Expanded(
                                     child: SliderTheme(
                                       data: SliderTheme.of(context).copyWith(
                                         activeTrackColor: AppColors.primary,
-                                        inactiveTrackColor: context.dividerColor.withOpacity(0.2),
+                                        inactiveTrackColor: Colors.grey.withOpacity(0.15),
                                         thumbColor: Colors.white,
                                         overlayColor: AppColors.primary.withOpacity(0.1),
-                                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10, elevation: 4),
+                                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 9, elevation: 4),
+                                        trackHeight: 3,
                                       ),
                                       child: Slider(
                                         value: drawingState.selectedStrokeWidth,
@@ -321,48 +432,72 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                       ),
                                     ),
                                   ),
+                                  Container(
+                                    width: 28,
+                                    height: 28,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: drawingState.selectedColor.withOpacity(0.15),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Container(
+                                      width: (drawingState.selectedStrokeWidth / 30) * 20 + 2,
+                                      height: (drawingState.selectedStrokeWidth / 30) * 20 + 2,
+                                      decoration: BoxDecoration(
+                                        color: drawingState.selectedColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      // Submit Button (Hero Style)
+                      const SizedBox(height: 12),
+                      // Send button
                       SizedBox(
                         width: double.infinity,
-                        height: 64,
+                        height: 58,
                         child: Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(100),
+                            gradient: const LinearGradient(
+                              colors: [AppColors.primary, Color(0xFFFF6EB4)],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withOpacity(0.3),
+                                color: AppColors.primary.withOpacity(0.35),
                                 blurRadius: 20,
-                                offset: const Offset(0, 10),
+                                offset: const Offset(0, 8),
                               ),
                             ],
                           ),
                           child: ElevatedButton(
                             onPressed: _isSending ? null : _sendToPartner,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
+                              backgroundColor: Colors.transparent,
                               foregroundColor: Colors.white,
+                              shadowColor: Colors.transparent,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
                               elevation: 0,
                             ),
                             child: _isSending
-                                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                                 : Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      const Icon(Icons.send_rounded, size: 20),
-                                      const SizedBox(width: 12),
+                                      const Icon(Icons.send_rounded, size: 18),
+                                      const SizedBox(width: 10),
                                       Text(
-                                        'Enviar para o Amor',
+                                        'Enviar para o Amor ❤️',
                                         style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 18,
+                                          fontSize: 16,
                                           fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.2,
                                         ),
                                       ),
                                     ],
@@ -382,6 +517,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   }
 }
 
+// ────────────────────────────────────────────────────────────────
+// Reusable Widgets
+// ────────────────────────────────────────────────────────────────
+
 class _FloatingGlassContainer extends StatelessWidget {
   final Widget child;
   const _FloatingGlassContainer({required this.child});
@@ -390,15 +529,15 @@ class _FloatingGlassContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(30),
+      borderRadius: BorderRadius.circular(28),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
         child: Container(
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.7),
-            borderRadius: BorderRadius.circular(30),
+            color: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.75),
+            borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: Colors.white.withOpacity(isDark ? 0.1 : 0.4),
+              color: Colors.white.withOpacity(isDark ? 0.1 : 0.5),
               width: 1.5,
             ),
           ),
@@ -415,9 +554,10 @@ class _AnimatedAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final initials = userName.isNotEmpty ? userName.substring(0, 1).toUpperCase() : '?';
     return Container(
-      width: 48,
-      height: 48,
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: const LinearGradient(
@@ -428,18 +568,18 @@ class _AnimatedAvatar extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: AppColors.primary.withOpacity(0.3),
-            blurRadius: 12,
+            blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Center(
         child: Text(
-          userName.substring(0, 1).toUpperCase(),
+          initials,
           style: GoogleFonts.plusJakartaSans(
             color: Colors.white,
             fontWeight: FontWeight.bold,
-            fontSize: 20,
+            fontSize: 18,
           ),
         ),
       ),
@@ -460,21 +600,21 @@ class _ConnectionStatus extends StatelessWidget {
             CurvedAnimation(parent: pulseController, curve: Curves.easeInOut),
           ),
           child: Container(
-            width: 8,
-            height: 8,
+            width: 7,
+            height: 7,
             decoration: const BoxDecoration(
               color: AppColors.success,
               shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: AppColors.success, blurRadius: 6, spreadRadius: 1)],
+              boxShadow: [BoxShadow(color: AppColors.success, blurRadius: 4, spreadRadius: 0)],
             ),
           ),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 5),
         Text(
           'CONECTADO',
           style: GoogleFonts.plusJakartaSans(
             color: AppColors.success,
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.5,
           ),
@@ -486,42 +626,75 @@ class _ConnectionStatus extends StatelessWidget {
 
 class _CanvasActionButton extends StatelessWidget {
   final IconData icon;
+  final String tooltip;
   final VoidCallback onTap;
-  const _CanvasActionButton({required this.icon, required this.onTap});
+  const _CanvasActionButton({required this.icon, required this.tooltip, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.black.withOpacity(0.4) : Colors.white.withOpacity(0.8),
-          shape: BoxShape.circle,
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.black.withOpacity(0.5) : Colors.white.withOpacity(0.9),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.12),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Icon(icon, size: 18, color: context.textColor.withOpacity(0.6)),
         ),
-        child: Icon(icon, size: 20, color: context.textColor.withOpacity(0.7)),
       ),
     );
   }
 }
 
-class _ToolButton extends StatelessWidget {
+/// Botão de ferramenta com ícone + label pequeno abaixo
+class _ToolIconButton extends StatelessWidget {
   final IconData icon;
+  final String label;
+  final Color color;
   final VoidCallback onTap;
-  const _ToolButton({required this.icon, required this.onTap});
+  const _ToolIconButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.1),
-          shape: BoxShape.circle,
-        ),
-        child: const Icon(Icons.image_rounded, color: AppColors.primary, size: 22),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.13),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

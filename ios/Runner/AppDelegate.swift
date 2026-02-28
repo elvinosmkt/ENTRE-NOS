@@ -1,6 +1,5 @@
 import Flutter
 import UIKit
-import FirebaseCore
 import FirebaseMessaging
 
 @main
@@ -9,9 +8,6 @@ import FirebaseMessaging
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // Initialize Firebase
-    FirebaseApp.configure()
-    
     // Register for remote notifications
     UNUserNotificationCenter.current().delegate = self
     application.registerForRemoteNotifications()

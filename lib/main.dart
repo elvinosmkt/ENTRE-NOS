@@ -11,8 +11,12 @@ import 'core/services/purchase_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
-  await Firebase.initializeApp();
+  // Initialize Firebase (protegido contra crash)
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('Firebase init error (non-fatal): $e');
+  }
 
   // Initialize Supabase
   await Supabase.initialize(
@@ -20,14 +24,22 @@ void main() async {
     anonKey: SupabaseConfig.anonKey,
   );
 
-  // Initialize Notifications
+  // Initialize Notifications (protegido)
   final notificationService = NotificationService();
-  await notificationService.init();
+  try {
+    await notificationService.init();
+  } catch (e) {
+    debugPrint('NotificationService init error: $e');
+  }
 
-  // Initialize RevenueCat (In-App Purchases)
-  await PurchaseService.init();
+  // Initialize RevenueCat (In-App Purchases) — protegido
+  try {
+    await PurchaseService.init();
+  } catch (e) {
+    debugPrint('PurchaseService init error: $e');
+  }
   
-  // Do not await permission request here to avoid blocking UI render (white screen deadlock on iOS)
+  // Do not await permission request here to avoid blocking UI render
   notificationService.requestPermissions();
   
   notificationService.startListening();

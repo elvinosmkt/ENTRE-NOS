@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart' as gf;
 import '../../../core/theme/app_colors.dart';
 
@@ -26,10 +27,19 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final prefs = await SharedPreferences.getInstance();
     final isConnected = prefs.getBool('is_connected') ?? false;
 
+    // Verificar se tem sessão Supabase ativa
+    final session = Supabase.instance.client.auth.currentSession;
+    final hasSession = session != null;
+
     if (mounted) {
-      if (isConnected) {
+      if (isConnected && hasSession) {
+        // Usuário está conectado e autenticado — vai para home
         context.go('/home');
+      } else if (hasSession && !isConnected) {
+        // Tem conta mas não conectou parceiro — vai para connect
+        context.go('/connect');
       } else {
+        // Novo usuário — vai para onboarding
         context.go('/onboarding');
       }
     }

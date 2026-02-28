@@ -5,8 +5,6 @@ class DrawingPoint {
   final Paint paint;
 
   DrawingPoint({required this.offset, required this.paint});
-  
-  // To JSON/From JSON can be added later for serialization
 }
 
 class DrawingStroke {
@@ -18,5 +16,19 @@ class DrawingStroke {
     required this.points,
     required this.color,
     required this.strokeWidth,
+  });
+}
+
+class DrawingText {
+  final String text;
+  final Color color;
+  final Offset position;
+  final double fontSize;
+
+  DrawingText({
+    required this.text,
+    required this.color,
+    required this.position,
+    this.fontSize = 24.0,
   });
 }

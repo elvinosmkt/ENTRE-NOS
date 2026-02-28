@@ -12,6 +12,5 @@ import SwiftUI
 struct EntreNosWidgetBundle: WidgetBundle {
     var body: some Widget {
         EntreNosWidget()
-        EntreNosWidgetControl()
     }
 }

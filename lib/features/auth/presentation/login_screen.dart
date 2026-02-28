@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/providers/user_provider.dart';
+import '../../../core/providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -16,18 +17,42 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _nameController = TextEditingController();
   bool _isLoading = false;
+  String? _errorMessage;
 
   Future<void> _saveNameAndContinue() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
 
-    setState(() => _isLoading = true);
-    
-    // Save via provider
-    await ref.read(userProvider.notifier).setName(name);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-    if (mounted) {
-      context.go('/connect');
+    try {
+      // 1. Criar conta anônima no Supabase e salvar perfil com invite_code
+      await ref.read(authProvider.notifier).signInAnonymously(name);
+
+      // 2. Salvar nome localmente também (para acesso rápido)
+      await ref.read(userProvider.notifier).setName(name);
+
+      // 3. Sincronizar o invite_code do Supabase para o local
+      final authState = ref.read(authProvider);
+      final profile = authState.value?.profile;
+      if (profile != null && profile['invite_code'] != null) {
+        await ref.read(userProvider.notifier).syncInviteCode(profile['invite_code']);
+      }
+
+      if (mounted) {
+        context.go('/connect');
+      }
+    } catch (e) {
+      debugPrint('Erro no login: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Erro ao criar conta. Tente novamente.';
+        });
+      }
     }
   }
 
@@ -45,7 +70,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFFDFCFD),
       body: Stack(
         children: [
-          // Background Blobs (same as onboarding for consistency)
+          // Background Blobs
           Positioned(
             top: -100,
             right: -80,
@@ -70,7 +95,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         children: [
                           const SizedBox(height: 80),
                           
-                          // Icon/Logo Container
+                          // Icon/Logo
                           Container(
                             padding: const EdgeInsets.all(32),
                             decoration: BoxDecoration(
@@ -86,14 +111,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               child: Icon(
                                 Icons.favorite_rounded, 
                                 size: 56, 
-                                color: AppColors.primary
+                                color: AppColors.primary,
                               ),
                             ),
                           ),
 
                           const SizedBox(height: 60),
 
-                          // Title Section
+                          // Title
                           Text(
                             'Quem é você?',
                             textAlign: TextAlign.center,
@@ -117,7 +142,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                           const SizedBox(height: 50),
 
-                          // Modern Name Input
+                          // Name Input
                           Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(24),
@@ -174,6 +199,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
 
+                          // Error message
+                          if (_errorMessage != null) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              _errorMessage!,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14,
+                                color: Colors.red[400],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+
                           const SizedBox(height: 100),
 
                           // Continue Button
@@ -186,7 +224,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(100)
+                                  borderRadius: BorderRadius.circular(100),
                                 ),
                                 elevation: 0,
                               ),
@@ -196,7 +234,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       height: 24,
                                       child: CircularProgressIndicator(
                                         color: Colors.white, 
-                                        strokeWidth: 2
+                                        strokeWidth: 2,
                                       ),
                                     )
                                   : Row(
@@ -255,4 +293,3 @@ class _GlowBlob extends StatelessWidget {
     );
   }
 }
-

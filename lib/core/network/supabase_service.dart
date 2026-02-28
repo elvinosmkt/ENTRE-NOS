@@ -12,32 +12,115 @@ class SupabaseService {
   /// Look up a profile by invite code
   Future<Map<String, dynamic>?> findProfileByCode(String code) async {
     try {
+      debugPrint('🔍 findProfileByCode: buscando código "$code"');
+      
+      // Primeiro, verificar se nosso próprio perfil existe
+      final myId = _client.auth.currentUser?.id;
+      debugPrint('🔍 Meu user ID: $myId');
+      
       final response = await _client
           .from('profiles')
           .select()
           .eq('invite_code', code.toUpperCase())
           .maybeSingle();
+      
+      debugPrint('🔍 findProfileByCode resultado: $response');
       return response;
     } catch (e) {
-      debugPrint('Error finding profile by code: $e');
+      debugPrint('❌ Error finding profile by code: $e');
       return null;
     }
   }
 
-  /// Connect two profiles as partners
+  /// Verificar meu próprio perfil (debug)
+  Future<Map<String, dynamic>?> debugMyProfile() async {
+    try {
+      final myId = _client.auth.currentUser?.id;
+      if (myId == null) {
+        debugPrint('❌ debugMyProfile: Não autenticado!');
+        return null;
+      }
+      
+      final response = await _client
+          .from('profiles')
+          .select()
+          .eq('id', myId)
+          .maybeSingle();
+      
+      debugPrint('👤 Meu perfil no Supabase: $response');
+      return response;
+    } catch (e) {
+      debugPrint('❌ debugMyProfile error: $e');
+      return null;
+    }
+  }
+
+  /// List all profiles (debug - para verificar se existem perfis)
+  Future<List<Map<String, dynamic>>> debugListAllProfiles() async {
+    try {
+      final response = await _client
+          .from('profiles')
+          .select('id, display_name, invite_code, partner_id')
+          .limit(10);
+      
+      debugPrint('📋 Todos os perfis: $response');
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('❌ debugListAllProfiles error: $e');
+      return [];
+    }
+  }
+
+  /// Connect two profiles as partners (usa RPC function SECURITY DEFINER)
   Future<bool> connectPartner(String partnerCode) async {
+    try {
+      final currentUserId = _client.auth.currentUser?.id;
+      debugPrint('🔗 connectPartner: meu ID=$currentUserId, código=$partnerCode');
+      
+      if (currentUserId == null) {
+        debugPrint('❌ connectPartner: Não autenticado!');
+        return false;
+      }
+
+      // Usar RPC function que bypassa RLS
+      final result = await _client.rpc('connect_partners', params: {
+        'p_partner_code': partnerCode.toUpperCase(),
+      });
+
+      debugPrint('🔗 connectPartner resultado: $result');
+
+      if (result is Map && result['success'] == true) {
+        debugPrint('✅ Parceiros conectados com sucesso!');
+        return true;
+      } else {
+        final error = result is Map ? result['error'] : 'Unknown error';
+        debugPrint('❌ connectPartner falhou: $error');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ Error connecting partner: $e');
+      
+      // Fallback: tentar o método antigo (direto) caso a RPC não exista ainda
+      debugPrint('🔄 Tentando método direto (fallback)...');
+      return _connectPartnerDirect(partnerCode);
+    }
+  }
+
+  /// Método direto de conexão (fallback se RPC não existir)
+  Future<bool> _connectPartnerDirect(String partnerCode) async {
     try {
       final currentUserId = _client.auth.currentUser?.id;
       if (currentUserId == null) return false;
 
-      // Find partner by code
       final partner = await findProfileByCode(partnerCode);
-      if (partner == null) return false;
+      if (partner == null) {
+        debugPrint('❌ Fallback: Parceiro NÃO encontrado para "$partnerCode"');
+        return false;
+      }
 
       final partnerId = partner['id'] as String;
-      if (partnerId == currentUserId) return false; // Can't connect with yourself
+      if (partnerId == currentUserId) return false;
 
-      // Update both profiles to link them
       await _client.from('profiles').update({
         'partner_id': partnerId,
         'updated_at': DateTime.now().toIso8601String(),
@@ -48,9 +131,10 @@ class SupabaseService {
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', partnerId);
 
+      debugPrint('✅ Fallback: Parceiros conectados!');
       return true;
     } catch (e) {
-      debugPrint('Error connecting partner: $e');
+      debugPrint('❌ Fallback error: $e');
       return false;
     }
   }

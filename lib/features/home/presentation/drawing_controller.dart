@@ -10,13 +10,15 @@ class DrawingState {
   final Color selectedColor;
   final double selectedStrokeWidth;
   final File? backgroundImage;
+  final List<DrawingText> texts;
 
   const DrawingState({
     this.strokes = const [],
     this.currentStroke,
-    this.selectedColor = const Color(0xFFFF4DA3), // Default Primary
+    this.selectedColor = const Color(0xFFFF4DA3),
     this.selectedStrokeWidth = 5.0,
     this.backgroundImage,
+    this.texts = const [],
   });
 
   DrawingState copyWith({
@@ -25,6 +27,7 @@ class DrawingState {
     Color? selectedColor,
     double? selectedStrokeWidth,
     File? backgroundImage,
+    List<DrawingText>? texts,
   }) {
     return DrawingState(
       strokes: strokes ?? this.strokes,
@@ -32,6 +35,7 @@ class DrawingState {
       selectedColor: selectedColor ?? this.selectedColor,
       selectedStrokeWidth: selectedStrokeWidth ?? this.selectedStrokeWidth,
       backgroundImage: backgroundImage ?? this.backgroundImage,
+      texts: texts ?? this.texts,
     );
   }
 }
@@ -88,8 +92,21 @@ class DrawingController extends Notifier<DrawingState> {
        currentStroke: null,
        selectedColor: state.selectedColor,
        selectedStrokeWidth: state.selectedStrokeWidth,
-       backgroundImage: null, // Clear image too
+       backgroundImage: null,
+       texts: [],
     );
+  }
+  
+  void addText(String text, {Offset? position}) {
+    // Adiciona o texto ao centro do canvas (ajustavel depois)
+    final newTexts = List<DrawingText>.from(state.texts)
+      ..add(DrawingText(
+        text: text,
+        color: state.selectedColor,
+        position: position ?? const Offset(150, 200),
+        fontSize: 22,
+      ));
+    state = state.copyWith(texts: newTexts);
   }
   
   void undo() {

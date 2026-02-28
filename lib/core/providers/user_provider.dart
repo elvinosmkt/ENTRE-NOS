@@ -67,6 +67,12 @@ class UserNotifier extends AsyncNotifier<UserState> {
     ));
   }
 
+  Future<void> syncInviteCode(String code) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('my_invite_code', code);
+    state = AsyncValue.data(state.value!.copyWith(myCode: code));
+  }
+
   Future<void> disconnect() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();

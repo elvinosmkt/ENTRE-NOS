@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
@@ -62,24 +63,38 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     state = const AsyncValue.loading();
     try {
       final authService = ref.read(authServiceProvider);
-      await authService.signInAnonymously();
+      
+      // Se já está autenticado, usar a sessão existente
+      if (authService.isAuthenticated) {
+        debugPrint('🔑 Já autenticado: ${authService.currentUserId}');
+      } else {
+        debugPrint('🔑 Criando conta anônima...');
+        await authService.signInAnonymously();
+        debugPrint('🔑 Conta criada: ${authService.currentUserId}');
+      }
       
       // Generate invite code
       final code = _generateCode();
+      debugPrint('🎫 Código de convite gerado: $code');
       
-      // Create profile
+      // Create/update profile
+      debugPrint('📝 Criando perfil com nome="$displayName", code="$code"');
       await authService.upsertProfile(
         displayName: displayName,
         inviteCode: code,
       );
+      debugPrint('✅ Perfil criado/atualizado no Supabase');
 
       final profile = await authService.getProfile();
+      debugPrint('👤 Perfil recuperado: $profile');
+      
       state = AsyncValue.data(AuthState(
         status: AuthStatus.authenticated,
         userId: authService.currentUserId,
         profile: profile,
       ));
     } catch (e, st) {
+      debugPrint('❌ Erro no signInAnonymously: $e');
       state = AsyncValue.error(e, st);
     }
   }

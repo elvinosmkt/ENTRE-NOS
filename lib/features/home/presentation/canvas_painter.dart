@@ -4,8 +4,13 @@ import '../domain/drawing_model.dart';
 class CanvasPainter extends CustomPainter {
   final List<DrawingStroke> strokes;
   final DrawingStroke? currentStroke;
+  final List<DrawingText> texts;
 
-  CanvasPainter({required this.strokes, this.currentStroke});
+  CanvasPainter({
+    required this.strokes,
+    this.currentStroke,
+    this.texts = const [],
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -17,6 +22,31 @@ class CanvasPainter extends CustomPainter {
     // Draw current stroke
     if (currentStroke != null) {
       _drawStroke(canvas, currentStroke!);
+    }
+
+    // Draw texts
+    for (final textItem in texts) {
+      final textSpan = TextSpan(
+        text: textItem.text,
+        style: TextStyle(
+          color: textItem.color,
+          fontSize: textItem.fontSize,
+          fontWeight: FontWeight.bold,
+          shadows: [
+            Shadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 4,
+              offset: const Offset(1, 1),
+            ),
+          ],
+        ),
+      );
+      final textPainter = TextPainter(
+        text: textSpan,
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout(maxWidth: size.width - textItem.position.dx - 20);
+      textPainter.paint(canvas, textItem.position);
     }
   }
 
